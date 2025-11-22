@@ -141,7 +141,7 @@ export function generateRatMetadata(
     // Random color (matches available PNG files)
     const colorIndex = randomInt(0, RAT_COLORS.length - 1);
     const color = RAT_COLORS[colorIndex];
-    
+
     // Random 3D model (1-6 for race rendering)
     const modelIndex = randomInt(1, 6);
 
