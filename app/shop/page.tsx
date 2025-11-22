@@ -7,7 +7,7 @@ import { mintRat } from '@/lib/contracts/mint-rat';
 import Link from 'next/link';
 import { useState } from 'react';
 import { formatUnits } from 'viem';
-import { useAccount, useReadContract } from 'wagmi';
+import { useAccount, useConnect, useReadContract } from 'wagmi';
 
 const RAT_RACERS = [
     {
@@ -54,6 +54,7 @@ interface MintedRat {
 
 export default function ShopPage() {
     const { address, isConnected } = useAccount();
+    const { connect, connectors } = useConnect();
     const { toast } = useToast();
     const [selectedRat, setSelectedRat] = useState<number | null>(null);
     const [minting, setMinting] = useState(false);
@@ -215,11 +216,32 @@ export default function ShopPage() {
                         </h1>
                         <p className="text-sm text-red-400 font-mono tracking-widest">[ MINTING FACILITY // SECTOR 7 ]</p>
                     </div>
-                    <Link href="/">
-                        <Button variant="outline" className="border-red-500 text-red-500 hover:bg-red-500 hover:text-black font-mono">
-                            &lt; EXIT
-                        </Button>
-                    </Link>
+                    <div className="flex gap-4 items-center">
+                        {!isConnected ? (
+                            <Button
+                                onClick={() => connect({ connector: connectors[0] })}
+                                className="bg-green-600 hover:bg-green-700 font-mono font-black px-6 py-3 text-lg border-2 border-green-400"
+                                style={{
+                                    textShadow: '0 0 10px rgba(0,255,0,0.5)',
+                                    boxShadow: '0 0 20px rgba(0,255,0,0.3)'
+                                }}
+                            >
+                                [!] CONNECT WALLET
+                            </Button>
+                        ) : (
+                            <div className="text-right">
+                                <div className="text-xs text-gray-500 font-mono mb-1">CONNECTED</div>
+                                <div className="text-sm text-green-400 font-mono">
+                                    {address?.slice(0, 6)}...{address?.slice(-4)}
+                                </div>
+                            </div>
+                        )}
+                        <Link href="/">
+                            <Button variant="outline" className="border-red-500 text-red-500 hover:bg-red-500 hover:text-black font-mono">
+                                &lt; EXIT
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Info Panel */}
