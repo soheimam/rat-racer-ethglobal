@@ -54,7 +54,7 @@ interface MintedRat {
 
 export default function ShopPage() {
     const { address, isConnected } = useAccount();
-    const { connect, connectors } = useConnect();
+    const { connect, connectors, isPending } = useConnect();
     const { toast } = useToast();
     const [selectedRat, setSelectedRat] = useState<number | null>(null);
     const [minting, setMinting] = useState(false);
@@ -81,7 +81,10 @@ export default function ShopPage() {
         ],
         functionName: 'balanceOf',
         args: address ? [address] : undefined,
-        query: { enabled: !!address }
+        query: {
+            enabled: !!address,
+            refetchInterval: false, // Don't auto-refetch
+        }
     });
 
     // Read dynamic mint price from contract
@@ -141,6 +144,8 @@ export default function ShopPage() {
                 },
                 onMintConfirmed: (tokenId) => {
                     toast({ title: 'RACER READY', description: `#${tokenId.toString()} entering the underground...` });
+                    // Refetch balance immediately after mint confirms
+                    refetchBalance();
                 },
             });
 
@@ -151,6 +156,9 @@ export default function ShopPage() {
 
             toast({ title: 'RACER COMPLETE', description: `${ratOption.name} ready to race!` });
             setShowSuccessModal(true);
+
+            // Refetch balance one more time after everything completes
+            refetchBalance();
         } catch (error: any) {
             console.error('Mint error:', error);
             toast({
@@ -219,14 +227,20 @@ export default function ShopPage() {
                     <div className="flex gap-4 items-center">
                         {!isConnected ? (
                             <Button
-                                onClick={() => connect({ connector: connectors[0] })}
-                                className="bg-green-600 hover:bg-green-700 font-mono font-black px-6 py-3 text-lg border-2 border-green-400"
+                                onClick={() => {
+                                    const connector = connectors[0];
+                                    if (connector) {
+                                        connect({ connector });
+                                    }
+                                }}
+                                disabled={isPending || !connectors.length}
+                                className="bg-green-600 hover:bg-green-700 font-mono font-black px-6 py-3 text-lg border-2 border-green-400 disabled:opacity-50"
                                 style={{
                                     textShadow: '0 0 10px rgba(0,255,0,0.5)',
                                     boxShadow: '0 0 20px rgba(0,255,0,0.3)'
                                 }}
                             >
-                                [!] CONNECT WALLET
+                                {isPending ? 'CONNECTING...' : '[!] CONNECT WALLET'}
                             </Button>
                         ) : (
                             <div className="text-right">
