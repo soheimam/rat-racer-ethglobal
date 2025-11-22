@@ -6,7 +6,7 @@ import { injected } from "wagmi/connectors";
 export const config = createConfig({
   chains: [base],
   transports: {
-    [base.id]: http(process.env.RPC_ENDPOINT || "https://mainnet.base.org")
+    [base.id]: http(process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://mainnet.base.org")
   },
   connectors: [
     injected({ shimDisconnect: true }),
