@@ -349,7 +349,7 @@ export function simulateRace(context: SimulationContext): SimulationResult {
       
       // Apply fatigue (controlled by stamina)
       const fatigueIndex = segment / SEGMENTS;
-      const fatigueResistance = perkResult.fatigueResistance || 0;
+      const fatigueResistance = (perkResult as any).fatigueResistance || 0;
       const staminaFactor = rat.stamina / 100;
       const baseFatigueImpact = 1 - staminaFactor;
       const adjustedFatigueImpact = baseFatigueImpact * (1 - fatigueResistance);
@@ -374,7 +374,7 @@ export function simulateRace(context: SimulationContext): SimulationResult {
         // Check if any counter-bloodlines are in race
         rats.forEach(opponent => {
           if (opponent.tokenId !== rat.tokenId) {
-            const counterModifier = bloodlinePerk.counterStrength[opponent.bloodline];
+            const counterModifier = (bloodlinePerk.counterStrength as any)[opponent.bloodline];
             if (counterModifier) {
               segmentSpeed *= counterModifier;
             }
@@ -526,7 +526,7 @@ export function recommendRatForRace(
     let favorableMatchups = 0;
     opponentRats.forEach(opponent => {
       if (bloodlinePerk?.counterStrength) {
-        const modifier = bloodlinePerk.counterStrength[opponent.bloodline];
+        const modifier = (bloodlinePerk.counterStrength as any)[opponent.bloodline];
         if (modifier && modifier > 1.0) {
           favorableMatchups++;
           score += 10;

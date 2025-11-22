@@ -1,74 +1,63 @@
 /**
- * Script to set the base URI for RatNFT after deployment
+ * Script to set the base URI on the deployed RatNFT contract
  * 
- * Usage:
- * npx hardhat run scripts/set-base-uri.ts --network base
- * 
- * Make sure to:
- * 1. Deploy the contract first
- * 2. Set NEXT_PUBLIC_RAT_NFT_ADDRESS in .env
- * 3. Get your Vercel Blob Storage URL
- * 4. Run this script
+ * Usage: npx hardhat run scripts/set-base-uri.ts --network <network>
  */
 
-import { ethers } from "hardhat";
+import hre from "hardhat";
 
 async function main() {
-  // Get contract address from environment
-  const RAT_NFT_ADDRESS = process.env.NEXT_PUBLIC_RAT_NFT_ADDRESS;
-  
-  if (!RAT_NFT_ADDRESS) {
-    throw new Error("NEXT_PUBLIC_RAT_NFT_ADDRESS not set in .env");
-  }
+    // Get the deployed contract address
+    const RAT_NFT_ADDRESS = process.env.RAT_NFT_ADDRESS;
+    const BLOB_BASE_URL = process.env.BLOB_BASE_URL;
 
-  console.log("Setting base URI for RatNFT at:", RAT_NFT_ADDRESS);
-
-  // Get signer
-  const [deployer] = await ethers.getSigners();
-  console.log("Using deployer:", deployer.address);
-
-  // Get contract
-  const RatNFT = await ethers.getContractAt("RatNFT", RAT_NFT_ADDRESS);
-
-  // Base URI from Vercel Blob Storage
-  // Format: https://[your-storage].public.blob.vercel-storage.com/rats/metadata/
-  const BASE_URI = process.env.BLOB_STORAGE_BASE_URI;
-  
-  if (!BASE_URI) {
-    throw new Error("BLOB_STORAGE_BASE_URI not set in .env");
-  }
-
-  console.log("\nSetting base URI to:", BASE_URI);
-
-  // Set base URI
-  const tx = await RatNFT.setBaseURI(BASE_URI);
-  console.log("Transaction sent:", tx.hash);
-  
-  await tx.wait();
-  console.log("Transaction confirmed!");
-
-  // Verify it was set
-  const currentBaseURI = await RatNFT.baseURI();
-  console.log("\nCurrent base URI:", currentBaseURI);
-
-  // Test tokenURI for token #1 (if it exists)
-  try {
-    const totalMinted = await RatNFT.totalMinted();
-    if (totalMinted > 0) {
-      const tokenURI = await RatNFT.tokenURI(1);
-      console.log("\nExample tokenURI(1):", tokenURI);
+    if (!RAT_NFT_ADDRESS) {
+        throw new Error("RAT_NFT_ADDRESS environment variable not set");
     }
-  } catch (e) {
-    console.log("\nNo tokens minted yet");
-  }
 
-  console.log("\n✓ Base URI set successfully!");
+    if (!BLOB_BASE_URL) {
+        throw new Error("BLOB_BASE_URL environment variable not set");
+    }
+
+    console.log("Setting base URI on RatNFT contract...");
+    console.log("Contract address:", RAT_NFT_ADDRESS);
+    console.log("Base URL:", BLOB_BASE_URL);
+
+    // Ensure the base URL ends with a trailing slash
+    const baseUrl = BLOB_BASE_URL.endsWith('/') ? BLOB_BASE_URL : `${BLOB_BASE_URL}/`;
+
+    const ratNFT = await hre.viem.getContractAt("RatNFT", RAT_NFT_ADDRESS as `0x${string}`);
+
+    // Set the base URI
+    const tx = await ratNFT.write.setBaseURI([baseUrl]);
+    console.log("Transaction sent:", tx);
+
+    const publicClient = await hre.viem.getPublicClient();
+    await publicClient.waitForTransactionReceipt({ hash: tx });
+
+    // Verify it was set correctly
+    const newBaseURI = await ratNFT.read.baseURI();
+    console.log("✅ Base URI set successfully:", newBaseURI);
+
+    // Example: show what tokenURI(1) would return
+    try {
+        const exampleURI = `${newBaseURI}1.json`;
+        console.log("\nExample tokenURI(1) will return:", exampleURI);
+        console.log("\nThis should match the Vercel Blob upload path:");
+        console.log("Webhook uploads to: rats/metadata/1.json");
+    } catch (error) {
+        console.log("(Token 1 doesn't exist yet - that's fine)");
+    }
+
+    console.log("\n📝 Next steps:");
+    console.log("1. Mint a test rat: ratNFT.mint(yourAddress)");
+    console.log("2. Webhook will automatically generate & upload metadata");
+    console.log("3. Call tokenURI(tokenId) to verify it returns the correct Blob URL");
 }
 
 main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
-
+    .then(() => process.exit(0))
+    .catch((error) => {
+        console.error(error);
+        process.exit(1);
+    });

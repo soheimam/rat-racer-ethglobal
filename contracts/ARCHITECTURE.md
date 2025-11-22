@@ -39,17 +39,20 @@ Professional, production-ready Solidity contracts for a competitive rat racing g
 **Location**: `rat/contracts/RatNFT.sol`
 
 **Inheritance**:
+
 ```solidity
 RatNFT is ERC721Enumerable, Ownable
 ```
 
 **Key Features**:
+
 - Standard ERC721 with enumeration
 - 6 color variants (models 0-5)
 - Metadata storage (name, color, mint timestamp)
 - Batch queries for owned rats
 
 **Storage**:
+
 ```solidity
 struct RatMetadata {
     string name;      // Rat's name
@@ -61,6 +64,7 @@ mapping(uint256 => RatMetadata) public ratMetadata;
 ```
 
 **External Functions**:
+
 ```solidity
 function mint(address to, string name, uint8 color) external returns (uint256)
 function getRatMetadata(uint256 tokenId) external view returns (RatMetadata)
@@ -69,6 +73,7 @@ function setBaseURI(string baseTokenURI_) external onlyOwner
 ```
 
 **Security**:
+
 - ✅ OpenZeppelin ERC721Enumerable (battle-tested)
 - ✅ Ownable for admin functions
 - ✅ Input validation (color range, name existence)
@@ -82,23 +87,27 @@ function setBaseURI(string baseTokenURI_) external onlyOwner
 **Location**: `race/contracts/RaceToken.sol`
 
 **Inheritance**:
+
 ```solidity
 RaceToken is ERC20, Ownable
 ```
 
 **Key Features**:
+
 - Standard ERC20 implementation
 - Initial supply: 1,000,000 RACE
 - Faucet function for testing
 - Mintable by owner
 
 **External Functions**:
+
 ```solidity
 function mint(address to, uint256 amount) external onlyOwner
 function faucet() external // Testing only - gives 1000 RACE
 ```
 
 **Security**:
+
 - ✅ OpenZeppelin ERC20 standard
 - ✅ Ownable for controlled minting
 - ⚠️ Faucet should be removed for production
@@ -112,11 +121,13 @@ function faucet() external // Testing only - gives 1000 RACE
 **Location**: `race/contracts/RaceManager.sol`
 
 **Inheritance**:
+
 ```solidity
 RaceManager is ReentrancyGuard
 ```
 
 **Constants**:
+
 ```solidity
 uint8 public constant MAX_RACERS = 6;           // 6 rats per race
 uint256 public constant CREATOR_FEE_PERCENT = 10; // 10% to creator
@@ -124,6 +135,7 @@ uint256 public constant PERCENT_DENOMINATOR = 100;
 ```
 
 **State Machine**:
+
 ```solidity
 enum RaceStatus {
     Active,    // Accepting entries
@@ -134,6 +146,7 @@ enum RaceStatus {
 ```
 
 **Data Structures**:
+
 ```solidity
 struct Race {
     uint256 raceId;
@@ -157,6 +170,7 @@ struct RacerEntry {
 ```
 
 **Storage**:
+
 ```solidity
 IERC721 public immutable ratNFT;                    // Rat NFT reference
 mapping(uint256 => Race) public races;              // Race data
@@ -168,6 +182,7 @@ mapping(uint256 => mapping(uint256 => bool)) ratInRace;  // Prevent rat reuse
 **External Functions**:
 
 #### Race Creation
+
 ```solidity
 function createRace(
     uint8 trackId,
@@ -175,17 +190,20 @@ function createRace(
     uint256 entryFee
 ) external returns (uint256 raceId)
 ```
+
 - Anyone can create a race
 - Creator earns 10% of prize pool
 - Validates: trackId > 0, token address, fee > 0
 
 #### Race Entry
+
 ```solidity
 function enterRace(
     uint256 raceId,
     uint256 ratTokenId
 ) external nonReentrant
 ```
+
 - Requires: Own the rat NFT
 - Requires: Sufficient token approval
 - Checks: Race exists, Active status, not full, not entered, rat not in race
@@ -193,21 +211,25 @@ function enterRace(
 - Updates to Full status when 6/6
 
 #### Race Start
+
 ```solidity
 function startRace(uint256 raceId) external
 ```
+
 - Can be called by ANY participant
 - Requires: Race Full (6/6)
 - Updates status to Started
 - Records start timestamp
 
 #### Race Finish
+
 ```solidity
 function finishRace(
     uint256 raceId,
     uint256[] calldata winningRatTokenIds
 ) external
 ```
+
 - Typically called by oracle/backend
 - Requires: Race Started, 6 positions provided
 - Sets final positions
@@ -215,6 +237,7 @@ function finishRace(
 - Updates status to Finished
 
 **Prize Distribution Logic**:
+
 ```solidity
 Total Prize Pool: 6 × entry fee
 
@@ -228,6 +251,7 @@ Remaining: 90% of total
 ```
 
 **View Functions**:
+
 ```solidity
 function getRace(uint256 raceId) external view returns (Race)
 function getRaceEntries(uint256 raceId) external view returns (RacerEntry[])
@@ -236,6 +260,7 @@ function hasRacerEntered(uint256 raceId, address racer) external view returns (b
 ```
 
 **Security Features**:
+
 - ✅ ReentrancyGuard on all token transfers
 - ✅ SafeERC20 for safe token operations
 - ✅ NFT ownership verification before entry
@@ -248,6 +273,7 @@ function hasRacerEntered(uint256 raceId, address racer) external view returns (b
 ## Race Lifecycle
 
 ### Phase 1: Creation
+
 ```solidity
 // Creator creates race with custom parameters
 uint256 raceId = raceManager.createRace(
@@ -261,18 +287,19 @@ uint256 raceId = raceManager.createRace(
 ```
 
 ### Phase 2: Entry
+
 ```solidity
 // Racers enter one by one
 for (racer in racers) {
     // 1. Racer owns rat NFT (verified on-chain)
     require(ratNFT.ownerOf(tokenId) == racer)
-    
+
     // 2. Racer approves entry fee
     raceToken.approve(raceManager, entryFee)
-    
+
     // 3. Enter race
     raceManager.enterRace(raceId, ratTokenId)
-    
+
     // Entry fee transferred to contract
     // Prize pool increases
 }
@@ -284,6 +311,7 @@ for (racer in racers) {
 ```
 
 ### Phase 3: Start
+
 ```solidity
 // Any participant can start
 raceManager.startRace(raceId)
@@ -294,6 +322,7 @@ raceManager.startRace(raceId)
 ```
 
 ### Phase 4: Finish & Distribution
+
 ```solidity
 // Backend/Oracle determines winner order
 // Calls finish with results
@@ -325,23 +354,23 @@ raceManager.finishRace(raceId, [
 
 ```typescript
 // 1. Check rat ownership
-const rats = await ratNFT.getRatsOfOwner(userAddress)
+const rats = await ratNFT.getRatsOfOwner(userAddress);
 
 // 2. Get active races
-const raceCount = await raceManager.getRaceCount()
+const raceCount = await raceManager.getRaceCount();
 for (let i = 0; i < raceCount; i++) {
-    const race = await raceManager.getRace(i)
-    if (race.status === RaceStatus.Active) {
-        // Show race in UI
-    }
+  const race = await raceManager.getRace(i);
+  if (race.status === RaceStatus.Active) {
+    // Show race in UI
+  }
 }
 
 // 3. Enter race
-await raceToken.approve(raceManager.address, entryFee)
-await raceManager.enterRace(raceId, selectedRatTokenId)
+await raceToken.approve(raceManager.address, entryFee);
+await raceManager.enterRace(raceId, selectedRatTokenId);
 
 // 4. Monitor race status
-const race = await raceManager.getRace(raceId)
+const race = await raceManager.getRace(raceId);
 // Update UI based on race.status
 ```
 
@@ -349,14 +378,14 @@ const race = await raceManager.getRace(raceId)
 
 ```typescript
 // Monitor for started races
-const filter = raceManager.filters.RaceStarted()
+const filter = raceManager.filters.RaceStarted();
 raceManager.on(filter, async (raceId, startedBy) => {
-    // Run race simulation
-    const results = await simulateRace(raceId)
-    
-    // Finish race with results
-    await raceManager.finishRace(raceId, results.winningOrder)
-})
+  // Run race simulation
+  const results = await simulateRace(raceId);
+
+  // Finish race with results
+  await raceManager.finishRace(raceId, results.winningOrder);
+});
 ```
 
 ---
@@ -391,6 +420,7 @@ event PrizeClaimed(uint256 indexed raceId, address indexed racer, uint256 amount
 ## Security Considerations
 
 ### Implemented
+
 ✅ ReentrancyGuard on entry
 ✅ SafeERC20 for transfers
 ✅ Ownership verification before entry
@@ -401,6 +431,7 @@ event PrizeClaimed(uint256 indexed raceId, address indexed racer, uint256 amount
 ✅ Immediate distribution (no claims)
 
 ### For Production
+
 ⚠️ Remove faucet from RaceToken
 ⚠️ Add access control to finishRace (oracle only)
 ⚠️ Consider time limits on races
@@ -412,11 +443,13 @@ event PrizeClaimed(uint256 indexed raceId, address indexed racer, uint256 amount
 ## Testing Coverage
 
 ### Unit Tests
+
 - RatNFT: 15+ tests
 - RaceManager: 30+ tests
 - Total: 80+ E2E integration tests
 
 ### Scenarios Covered
+
 ✅ Happy paths (full lifecycle)
 ✅ Error conditions (invalid inputs)
 ✅ Edge cases (transfers, odd fees)
@@ -430,12 +463,14 @@ event PrizeClaimed(uint256 indexed raceId, address indexed racer, uint256 amount
 ## Future Enhancements
 
 ### Phase 2
+
 - Multiple track support (different lengths/difficulties)
 - Rat attributes (speed, stamina, etc)
 - Training/leveling system
 - Breeding mechanics
 
 ### Phase 3
+
 - Tournament brackets
 - Leaderboards
 - Seasonal competitions
@@ -443,6 +478,7 @@ event PrizeClaimed(uint256 indexed raceId, address indexed racer, uint256 amount
 - Sponsorships
 
 ### Advanced
+
 - Cross-chain racing
 - Rat staking during races
 - Dynamic entry fees based on demand
@@ -475,15 +511,14 @@ export const CONTRACTS = {
   RAT_NFT: "0x...",
   RACE_TOKEN: "0x...",
   RACE_MANAGER: "0x...",
-}
+};
 
 // ABIs
-import RatNFTABI from "./abis/RatNFT.json"
-import RaceTokenABI from "./abis/RaceToken.json"
-import RaceManagerABI from "./abis/RaceManager.json"
+import RatNFTABI from "./abis/RatNFT.json";
+import RaceTokenABI from "./abis/RaceToken.json";
+import RaceManagerABI from "./abis/RaceManager.json";
 ```
 
 ---
 
 **Built with ❤️ for ETHGlobal**
-

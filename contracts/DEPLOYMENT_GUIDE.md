@@ -8,7 +8,7 @@ Complete guide for deploying Rat Racer contracts to Base mainnet with backend or
 ✅ Separate wallet for oracle/backend (Vercel function)  
 ✅ Private keys for both wallets  
 ✅ Base RPC endpoint  
-✅ (Optional) BaseScan API key for verification  
+✅ (Optional) BaseScan API key for verification
 
 ---
 
@@ -89,6 +89,7 @@ npx hardhat run scripts/deploy-production.ts --network base
 ```
 
 This will deploy:
+
 1. ✅ RatNFTV2 (with stats & history tracking)
 2. ✅ RaceToken (ERC20 for entry fees)
 3. ✅ RaceManagerV2 (with oracle access control)
@@ -96,6 +97,7 @@ This will deploy:
 ### 4.2 Save contract addresses
 
 The script will output:
+
 ```
 RAT_NFT_ADDRESS="0x..."
 RACE_TOKEN_ADDRESS="0x..."
@@ -108,6 +110,7 @@ ORACLE_ADDRESS="0x..."
 ### 4.3 Update `.env` with deployed addresses
 
 Add to your `.env`:
+
 ```bash
 RAT_NFT_ADDRESS=0x...
 RACE_TOKEN_ADDRESS=0x...
@@ -180,50 +183,50 @@ curl -X POST https://your-app.vercel.app/api/finish-race \
 Create `/lib/contracts.ts`:
 
 ```typescript
-import { parseAbi } from 'viem';
+import { parseAbi } from "viem";
 
 export const CONTRACTS = {
-  RAT_NFT: '0x...' as `0x${string}`,
-  RACE_TOKEN: '0x...' as `0x${string}`,
-  RACE_MANAGER: '0x...' as `0x${string}`,
+  RAT_NFT: "0x..." as `0x${string}`,
+  RACE_TOKEN: "0x..." as `0x${string}`,
+  RACE_MANAGER: "0x..." as `0x${string}`,
 };
 
 export const RAT_NFT_ABI = parseAbi([
-  'function mint(address to, string name, uint8 color, uint8 stamina, uint8 agility, uint8 speed, string bloodline, string gender) external returns (uint256)',
-  'function mintSimple(address to, string name, uint8 color) external returns (uint256)',
-  'function getRatMetadata(uint256 tokenId) external view returns (tuple(string name, uint8 color, uint256 mintedAt, uint8 stamina, uint8 agility, uint8 speed, string bloodline, string gender))',
-  'function getRatStats(uint256 tokenId) external view returns (tuple(uint16 wins, uint16 placed, uint16 losses, uint16 totalRaces))',
-  'function getRatsOfOwner(address owner) external view returns (uint256[])',
+  "function mint(address to, string name, uint8 color, uint8 stamina, uint8 agility, uint8 speed, string bloodline, string gender) external returns (uint256)",
+  "function mintSimple(address to, string name, uint8 color) external returns (uint256)",
+  "function getRatMetadata(uint256 tokenId) external view returns (tuple(string name, uint8 color, uint256 mintedAt, uint8 stamina, uint8 agility, uint8 speed, string bloodline, string gender))",
+  "function getRatStats(uint256 tokenId) external view returns (tuple(uint16 wins, uint16 placed, uint16 losses, uint16 totalRaces))",
+  "function getRatsOfOwner(address owner) external view returns (uint256[])",
 ]);
 
 export const RACE_MANAGER_ABI = parseAbi([
-  'function createRace(uint8 trackId, address entryToken, uint256 entryFee, string title, string description) external returns (uint256)',
-  'function enterRace(uint256 raceId, uint256 ratTokenId) external',
-  'function exitRace(uint256 raceId) external',
-  'function startRace(uint256 raceId) external',
-  'function getRace(uint256 raceId) external view returns (tuple(uint256 raceId, address creator, uint8 trackId, address entryToken, uint256 entryFee, uint8 status, uint256 prizePool, uint256 createdAt, uint256 startedAt, uint256 finishedAt, string title, string description))',
-  'function getRaceEntries(uint256 raceId) external view returns (tuple(address racer, uint256 ratTokenId, uint256 enteredAt, uint8 position)[])',
+  "function createRace(uint8 trackId, address entryToken, uint256 entryFee, string title, string description) external returns (uint256)",
+  "function enterRace(uint256 raceId, uint256 ratTokenId) external",
+  "function exitRace(uint256 raceId) external",
+  "function startRace(uint256 raceId) external",
+  "function getRace(uint256 raceId) external view returns (tuple(uint256 raceId, address creator, uint8 trackId, address entryToken, uint256 entryFee, uint8 status, uint256 prizePool, uint256 createdAt, uint256 startedAt, uint256 finishedAt, string title, string description))",
+  "function getRaceEntries(uint256 raceId) external view returns (tuple(address racer, uint256 ratTokenId, uint256 enteredAt, uint8 position)[])",
 ]);
 
 export const RACE_TOKEN_ABI = parseAbi([
-  'function approve(address spender, uint256 amount) external returns (bool)',
-  'function balanceOf(address account) external view returns (uint256)',
-  'function faucet() external', // Remove in production
+  "function approve(address spender, uint256 amount) external returns (bool)",
+  "function balanceOf(address account) external view returns (uint256)",
+  "function faucet() external", // Remove in production
 ]);
 ```
 
 ### 7.2 Example: Mint a rat
 
 ```typescript
-import { useWriteContract } from 'wagmi';
-import { CONTRACTS, RAT_NFT_ABI } from '@/lib/contracts';
+import { useWriteContract } from "wagmi";
+import { CONTRACTS, RAT_NFT_ABI } from "@/lib/contracts";
 
 const { writeContract } = useWriteContract();
 
 await writeContract({
   address: CONTRACTS.RAT_NFT,
   abi: RAT_NFT_ABI,
-  functionName: 'mintSimple',
+  functionName: "mintSimple",
   args: [userAddress, "Lightning", 0],
 });
 ```
@@ -235,13 +238,13 @@ await writeContract({
 await writeContract({
   address: CONTRACTS.RACE_MANAGER,
   abi: RACE_MANAGER_ABI,
-  functionName: 'createRace',
+  functionName: "createRace",
   args: [
     1, // trackId
     CONTRACTS.RACE_TOKEN,
     parseEther("100"), // entry fee
     "Street Championship",
-    "The ultimate showdown"
+    "The ultimate showdown",
   ],
 });
 
@@ -249,7 +252,7 @@ await writeContract({
 await writeContract({
   address: CONTRACTS.RACE_TOKEN,
   abi: RACE_TOKEN_ABI,
-  functionName: 'approve',
+  functionName: "approve",
   args: [CONTRACTS.RACE_MANAGER, parseEther("100")],
 });
 
@@ -257,7 +260,7 @@ await writeContract({
 await writeContract({
   address: CONTRACTS.RACE_MANAGER,
   abi: RACE_MANAGER_ABI,
-  functionName: 'enterRace',
+  functionName: "enterRace",
   args: [raceId, ratTokenId],
 });
 
@@ -265,14 +268,14 @@ await writeContract({
 await writeContract({
   address: CONTRACTS.RACE_MANAGER,
   abi: RACE_MANAGER_ABI,
-  functionName: 'startRace',
+  functionName: "startRace",
   args: [raceId],
 });
 
 // 5. Call backend to finish race
-await fetch('/api/finish-race', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+await fetch("/api/finish-race", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ raceId }),
 });
 ```
@@ -282,6 +285,7 @@ await fetch('/api/finish-race', {
 ## Step 8: Post-Deployment Checklist
 
 ### Security
+
 - [ ] Oracle wallet has ETH for gas
 - [ ] Oracle private key stored in Vercel secrets (not .env file)
 - [ ] Deployer wallet still has ownership of contracts
@@ -289,6 +293,7 @@ await fetch('/api/finish-race', {
 - [ ] BaseScan verification complete
 
 ### Functionality
+
 - [ ] Can mint rats with stats
 - [ ] Can create races with title/description
 - [ ] Can enter races with token approval
@@ -298,6 +303,7 @@ await fetch('/api/finish-race', {
 - [ ] Rats can race again after completion
 
 ### Frontend
+
 - [ ] Contract addresses updated
 - [ ] ABIs updated
 - [ ] Can connect wallet
@@ -311,22 +317,27 @@ await fetch('/api/finish-race', {
 ## Troubleshooting
 
 ### "Only oracle can call"
+
 **Problem**: Trying to call `finishRace()` from non-oracle address.  
 **Solution**: Ensure Vercel function uses `ORACLE_PRIVATE_KEY` wallet.
 
 ### "Race not ready to start"
+
 **Problem**: Race not full (< 6 racers).  
 **Solution**: Wait for 6/6 racers or test with 6 accounts.
 
 ### "Rat already in this race"
+
 **Problem**: Same rat can't enter same race twice.  
 **Solution**: Use different rat or wait for race to finish.
 
 ### "Insufficient approval"
+
 **Problem**: User didn't approve entry fee tokens.  
 **Solution**: Call `raceToken.approve()` before `enterRace()`.
 
 ### "Transaction reverted"
+
 **Problem**: Various reasons - check revert message.  
 **Solution**: Read error message, check contract state, verify parameters.
 
@@ -334,19 +345,19 @@ await fetch('/api/finish-race', {
 
 ## Gas Costs (Base Mainnet Estimates)
 
-| Operation | Gas Estimate | Cost @ 0.1 gwei |
-|-----------|--------------|-----------------|
-| Deploy RatNFT | ~2,500,000 | ~$0.05 |
-| Deploy RaceToken | ~1,500,000 | ~$0.03 |
-| Deploy RaceManager | ~3,000,000 | ~$0.06 |
-| Mint Rat (simple) | ~150,000 | ~$0.003 |
-| Create Race | ~200,000 | ~$0.004 |
-| Enter Race | ~120,000 | ~$0.0024 |
-| Start Race | ~50,000 | ~$0.001 |
-| Finish Race | ~250,000 | ~$0.005 |
+| Operation          | Gas Estimate | Cost @ 0.1 gwei |
+| ------------------ | ------------ | --------------- |
+| Deploy RatNFT      | ~2,500,000   | ~$0.05          |
+| Deploy RaceToken   | ~1,500,000   | ~$0.03          |
+| Deploy RaceManager | ~3,000,000   | ~$0.06          |
+| Mint Rat (simple)  | ~150,000     | ~$0.003         |
+| Create Race        | ~200,000     | ~$0.004         |
+| Enter Race         | ~120,000     | ~$0.0024        |
+| Start Race         | ~50,000      | ~$0.001         |
+| Finish Race        | ~250,000     | ~$0.005         |
 
 **Total deployment**: ~$0.15  
-**Per race lifecycle**: ~$0.02  
+**Per race lifecycle**: ~$0.02
 
 Base is CHEAP! 🎉
 
@@ -357,8 +368,8 @@ Base is CHEAP! 🎉
 ### Watch for events
 
 ```typescript
-import { createPublicClient, http } from 'viem';
-import { base } from 'viem/chains';
+import { createPublicClient, http } from "viem";
+import { base } from "viem/chains";
 
 const client = createPublicClient({
   chain: base,
@@ -369,13 +380,13 @@ const client = createPublicClient({
 client.watchContractEvent({
   address: CONTRACTS.RACE_MANAGER,
   abi: RACE_MANAGER_ABI,
-  eventName: 'RaceStarted',
+  eventName: "RaceStarted",
   onLogs: (logs) => {
-    logs.forEach(log => {
+    logs.forEach((log) => {
       const { raceId } = log.args;
       // Trigger backend to finish race
-      fetch('/api/finish-race', {
-        method: 'POST',
+      fetch("/api/finish-race", {
+        method: "POST",
         body: JSON.stringify({ raceId: raceId.toString() }),
       });
     });
@@ -386,6 +397,7 @@ client.watchContractEvent({
 ### Dashboard recommendations
 
 Monitor:
+
 - Total rats minted
 - Total races created
 - Total prizes distributed
@@ -403,7 +415,7 @@ Monitor:
 await writeContract({
   address: CONTRACTS.RACE_MANAGER,
   abi: RACE_MANAGER_ABI,
-  functionName: 'setOracle',
+  functionName: "setOracle",
   args: [newOracleAddress],
 });
 ```
@@ -415,7 +427,7 @@ await writeContract({
 await writeContract({
   address: CONTRACTS.RACE_MANAGER,
   abi: RACE_MANAGER_ABI,
-  functionName: 'cancelExpiredRace',
+  functionName: "cancelExpiredRace",
   args: [raceId],
 });
 ```
@@ -427,6 +439,7 @@ await writeContract({
 Your contracts are now live on Base mainnet!
 
 **Next steps**:
+
 1. Test with small amounts first
 2. Announce to community
 3. Monitor for issues
@@ -435,4 +448,3 @@ Your contracts are now live on Base mainnet!
 ---
 
 **Questions?** Check `/contracts/CRITICAL_ANALYSIS.md` for details on all fixes and security measures.
-

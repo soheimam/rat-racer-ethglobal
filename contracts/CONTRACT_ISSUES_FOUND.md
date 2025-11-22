@@ -15,6 +15,7 @@ Comprehensive testing revealed **7 CRITICAL** security/game loop issues that mus
 **Problem**: ANY address can call `finishRace()` and manipulate race results.
 
 **Attack Vector**:
+
 ```solidity
 // Attacker can finish race with themselves winning
 await raceManager.write.finishRace([raceId, [attackerRat, ...otherRats]], {
@@ -22,7 +23,8 @@ await raceManager.write.finishRace([raceId, [attackerRat, ...otherRats]], {
 });
 ```
 
-**Impact**: 
+**Impact**:
+
 - Attacker steals prize pool
 - Race results are meaningless
 - Game is completely broken
@@ -30,6 +32,7 @@ await raceManager.write.finishRace([raceId, [attackerRat, ...otherRats]], {
 **Test**: `RaceManager.comprehensive.test.ts:604` - "Anyone can call finishRace()"
 
 **Fix Required**:
+
 ```solidity
 address public oracle;
 
@@ -50,6 +53,7 @@ function finishRace(...) external onlyOracle nonReentrant { ... }
 **Problem**: If race doesn't fill (e.g., 2/6 racers), funds are **LOCKED FOREVER** in contract.
 
 **Impact**:
+
 - Users lose their entry fees permanently
 - Bad UX - users can't exit stale races
 - Contract becomes a token black hole
@@ -57,6 +61,7 @@ function finishRace(...) external onlyOracle nonReentrant { ... }
 **Test**: `RaceManager.comprehensive.test.ts:617` - "Funds locked if race doesn't fill"
 
 **Scenario**:
+
 1. User enters race with 100 RACE tokens
 2. Only 2/6 spots fill
 3. Race sits forever in "Active" state
@@ -64,6 +69,7 @@ function finishRace(...) external onlyOracle nonReentrant { ... }
 5. Tokens locked in contract with NO withdrawal function
 
 **Fix Required**:
+
 ```solidity
 uint256 public constant RACE_EXPIRY = 24 hours;
 
@@ -71,13 +77,13 @@ function cancelRace(uint256 raceId) external nonReentrant {
     Race storage race = races[raceId];
     require(race.status == RaceStatus.Active, "Race not active");
     require(
-        block.timestamp > race.createdAt + RACE_EXPIRY || 
+        block.timestamp > race.createdAt + RACE_EXPIRY ||
         msg.sender == race.creator,
         "Cannot cancel yet"
     );
-    
+
     race.status = RaceStatus.Cancelled;
-    
+
     // Refund all entrants
     RacerEntry[] storage entries = raceEntries[raceId];
     for (uint256 i = 0; i < entries.length; i++) {
@@ -85,7 +91,7 @@ function cancelRace(uint256 raceId) external nonReentrant {
         hasEntered[raceId][entries[i].racer] = false;
         ratInRace[raceId][entries[i].ratTokenId] = false;
     }
-    
+
     emit RaceCancelled(raceId);
 }
 ```
@@ -99,6 +105,7 @@ function cancelRace(uint256 raceId) external nonReentrant {
 **Problem**: No global rat locking. Same rat can be in race #1, #2, #3, etc. simultaneously.
 
 **Impact**:
+
 - Breaks game logic - one rat racing in multiple races
 - User can 6x their odds by entering same rat everywhere
 - Prize distribution becomes nonsensical
@@ -106,11 +113,13 @@ function cancelRace(uint256 raceId) external nonReentrant {
 **Test**: `RaceManager.comprehensive.test.ts:635` - "Rat can enter multiple active races"
 
 **Current Code**:
+
 ```solidity
 ratInRace[raceId][ratTokenId] = true; // Only checks per-race, not global
 ```
 
 **Fix Required**:
+
 ```solidity
 // Add global tracking
 mapping(uint256 => uint256) public ratCurrentRace; // ratId => raceId (0 = not racing)
@@ -118,15 +127,15 @@ mapping(uint256 => uint256) public ratCurrentRace; // ratId => raceId (0 = not r
 function enterRace(uint256 raceId, uint256 ratTokenId) external nonReentrant {
     // ... existing checks ...
     require(ratCurrentRace[ratTokenId] == 0, "Rat already in active race");
-    
+
     // ... existing logic ...
-    
+
     ratCurrentRace[ratTokenId] = raceId;
 }
 
 function _distributePrizes(uint256 raceId) private {
     // ... existing logic ...
-    
+
     // Release rats after race
     RacerEntry[] storage entries = raceEntries[raceId];
     for (uint256 i = 0; i < entries.length; i++) {
@@ -144,6 +153,7 @@ function _distributePrizes(uint256 raceId) private {
 **Problem**: `finishRace()` lacks `nonReentrant` modifier but makes external token transfers.
 
 **Current Code**:
+
 ```solidity
 function finishRace(...) external { // ❌ No nonReentrant
     // ... state changes ...
@@ -157,6 +167,7 @@ function _distributePrizes(...) private {
 ```
 
 **Attack Vector**:
+
 - Malicious ERC20 token contract
 - Re-enter during transfer
 - Drain prize pool multiple times
@@ -164,6 +175,7 @@ function _distributePrizes(...) private {
 **Test**: `RaceManager.comprehensive.test.ts:684` - "No reentrancy protection"
 
 **Fix Required**:
+
 ```solidity
 function finishRace(...) external onlyOracle nonReentrant { // ✅ Add nonReentrant
     // ... rest of code ...
@@ -179,6 +191,7 @@ function finishRace(...) external onlyOracle nonReentrant { // ✅ Add nonReentr
 **Problem**: Race can sit in "Started" state forever. No timeout/expiry mechanism.
 
 **Impact**:
+
 - Rats locked indefinitely if oracle fails
 - DoS on rat availability
 - Poor UX
@@ -186,6 +199,7 @@ function finishRace(...) external onlyOracle nonReentrant { // ✅ Add nonReentr
 **Test**: `RaceManager.comprehensive.test.ts:665` - "No time limit on race completion"
 
 **Fix Required**:
+
 ```solidity
 uint256 public constant RACE_TIMEOUT = 30 minutes;
 
@@ -196,9 +210,9 @@ function timeoutRace(uint256 raceId) external nonReentrant {
         block.timestamp > race.startedAt + RACE_TIMEOUT,
         "Race not expired yet"
     );
-    
+
     race.status = RaceStatus.Cancelled;
-    
+
     // Refund all entrants
     uint256 refundAmount = race.entryFee;
     RacerEntry[] storage entries = raceEntries[raceId];
@@ -207,7 +221,7 @@ function timeoutRace(uint256 raceId) external nonReentrant {
         ratInRace[raceId][entries[i].ratTokenId] = false;
         ratCurrentRace[entries[i].ratTokenId] = 0;
     }
-    
+
     emit RaceTimedOut(raceId);
 }
 ```
@@ -221,6 +235,7 @@ function timeoutRace(uint256 raceId) external nonReentrant {
 **Problem**: Race creator has no control over their race. Can't cancel even if no one joins.
 
 **Impact**:
+
 - Poor creator UX
 - Abandoned races clutter the system
 - No race management capability
@@ -238,6 +253,7 @@ function timeoutRace(uint256 raceId) external nonReentrant {
 **Problem**: Unlimited race creation. Could create infinite races, bloat state.
 
 **Impact**:
+
 - State bloat
 - Gas costs increase over time
 - Potential DoS on view functions
@@ -245,6 +261,7 @@ function timeoutRace(uint256 raceId) external nonReentrant {
 **Test**: `RaceManager.comprehensive.test.ts:650` - "No maximum race limit"
 
 **Fix**:
+
 ```solidity
 uint256 public constant MAX_ACTIVE_RACES = 1000;
 uint256 public activeRaceCount;
@@ -267,11 +284,13 @@ function _finishRace(...) {
 ## 📊 Test Coverage Summary
 
 ### RatNFT Contract
+
 ✅ **100% Coverage** - All functions tested
 
 Test file: `contracts/rat/test/RatNFT.comprehensive.test.ts`
 
 Coverage areas:
+
 - ✅ Deployment & initialization
 - ✅ Minting with all valid colors (0-5)
 - ✅ Invalid color/name validation
@@ -284,11 +303,13 @@ Coverage areas:
 - ✅ Security (metadata integrity after transfer)
 
 ### RaceManager Contract
+
 ✅ **100% Coverage** - All functions tested + attack vectors
 
 Test file: `contracts/race/test/RaceManager.comprehensive.test.ts`
 
 Coverage areas:
+
 - ✅ Deployment & initialization
 - ✅ Race creation (all validations)
 - ✅ Race entry (all edge cases)
@@ -306,16 +327,19 @@ Coverage areas:
 ## 🎯 Recommendations
 
 ### Priority 1 (Must Fix Before Launch)
+
 1. ✅ Add oracle role + access control to `finishRace()`
 2. ✅ Implement race cancellation & refunds
 3. ✅ Add global rat locking mechanism
 4. ✅ Add `nonReentrant` to `finishRace()`
 
 ### Priority 2 (Should Fix)
+
 5. ✅ Add race timeout mechanism
 6. ✅ Allow creator to cancel unfilled races
 
 ### Priority 3 (Nice to Have)
+
 7. ✅ Add maximum active race limit
 8. ⚠️ Consider adding burn functionality to RatNFT for "retiring" rats
 9. ⚠️ Add events for all state changes (cancellation, timeouts, etc.)
@@ -325,15 +349,17 @@ Coverage areas:
 ## 🏃 Running Tests
 
 ### Run all tests:
+
 ```bash
 cd contracts/race
 npm test
 
-cd ../rat  
+cd ../rat
 npm test
 ```
 
 ### Run with coverage:
+
 ```bash
 cd contracts/race
 npx hardhat coverage
@@ -343,6 +369,7 @@ npx hardhat coverage
 ```
 
 ### Run specific test file:
+
 ```bash
 cd contracts/race
 npx hardhat test test/RaceManager.comprehensive.test.ts
@@ -356,22 +383,27 @@ npx hardhat test test/RatNFT.comprehensive.test.ts
 ## 💡 Additional Notes
 
 ### Scaling Concerns
+
 1. **State Growth**: Each race stores 6 RacerEntry structs. With 1000s of races, this could get expensive.
+
    - **Solution**: Consider pruning old race data or archiving to IPFS/Arweave
 
 2. **Gas Costs**: `_distributePrizes()` loops over 6 entries with external transfers.
+
    - **Solution**: Current design is fine for 6 racers, but monitor gas costs
 
 3. **Oracle Dependency**: Game is completely dependent on oracle to finish races.
    - **Solution**: Implement timeout mechanism (Issue #5) as backup
 
 ### Economic Model
+
 - **Creator fee (10%)** is fair
 - **Prize split (50/30/20)** incentivizes competition
 - **No entry for 4th-6th** might discourage participation
   - **Consider**: Small consolation prize (5% split between 4-6?)
 
 ### Game Loop Flow
+
 ```
 1. Creator creates race
 2. 6 racers enter (pay entry fee)
@@ -381,6 +413,7 @@ npx hardhat test test/RatNFT.comprehensive.test.ts
 ```
 
 **Missing from current implementation**:
+
 - ❌ What if race doesn't fill? (Issue #2)
 - ❌ What if oracle fails? (Issue #5)
 - ❌ What prevents manipulation? (Issue #1)
@@ -390,8 +423,8 @@ npx hardhat test test/RatNFT.comprehensive.test.ts
 ## ✅ Test Results
 
 All 78 tests passing:
+
 - 29 tests for RatNFT
 - 49 tests for RaceManager
 
 **Every vulnerability is demonstrated with a passing test**, proving these are real issues that need fixing.
-

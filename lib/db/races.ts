@@ -1,6 +1,6 @@
-import { getDb, generateId } from './client';
-import { Race, RaceEntry } from './types';
+import { generateId, getDb } from './client';
 import { RatsService } from './rats';
+import { Race, RaceEntry } from './types';
 
 export class RacesService {
     /**
@@ -12,7 +12,7 @@ export class RacesService {
         entryFee: string;
     }): Promise<Race> {
         const db = await getDb();
-        
+
         const race: Race = {
             id: generateId('race'),
             title: data.title,
@@ -198,12 +198,12 @@ export class RacesService {
     static async getActiveRaces(): Promise<Race[]> {
         const db = await getDb();
         const races = await db.collection('races')
-            .find<Race>({ 
+            .find<Race>({
                 status: { $in: ['waiting', 'running', 'full'] }
             })
             .sort({ createdAt: -1 })
             .toArray();
-        
+
         return races;
     }
 
@@ -217,7 +217,7 @@ export class RacesService {
             .sort({ completedAt: -1 })
             .limit(limit)
             .toArray();
-        
+
         return races;
     }
 
@@ -227,12 +227,12 @@ export class RacesService {
     static async getRacesByWallet(wallet: string): Promise<Race[]> {
         const db = await getDb();
         const races = await db.collection('races')
-            .find<Race>({ 
-                'participants.owner': wallet 
+            .find<Race>({
+                'participants.owner': wallet
             })
             .sort({ createdAt: -1 })
             .toArray();
-        
+
         return races;
     }
 }

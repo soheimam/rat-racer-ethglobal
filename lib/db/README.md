@@ -7,6 +7,7 @@ Professional MongoDB module for managing all rat racing data.
 ### Environment Variables
 
 Already set in `.env.local`:
+
 ```env
 MONGO_CONNECTION=mongodb+srv://flynn_db_user:ki4deBxAqTgBvMM8@rat-db.5gartb5.mongodb.net/?appName=rat-db
 MONGO_USERNAME=flynn_db_user
@@ -18,11 +19,13 @@ MONGO_PASSWORD=ki4deBxAqTgBvMM8
 **Database:** `rat-racer`
 
 **Collections:**
+
 - `rats` - Rat NFTs
 - `races` - Race events
 - `wallets` - User wallets
 
 **Indexes:**
+
 - `rats.id` (unique)
 - `rats.owner`
 - `races.id` (unique)
@@ -35,6 +38,7 @@ MONGO_PASSWORD=ki4deBxAqTgBvMM8
 ## Services
 
 ### RatsService
+
 - `createRat(owner, ratData)` - Mint new rat
 - `getRat(ratId)` - Get rat by ID
 - `getRatsByOwner(owner)` - Get wallet's rats
@@ -43,6 +47,7 @@ MONGO_PASSWORD=ki4deBxAqTgBvMM8
 - `generateRandomStats()` - Random stats for minting
 
 ### RacesService
+
 - `createRace(data)` - Create new race
 - `enterRace(raceId, ratId, owner)` - Enter rat (auto-starts at 6/6)
 - `startRace(raceId)` - Manually start race
@@ -52,6 +57,7 @@ MONGO_PASSWORD=ki4deBxAqTgBvMM8
 - `getRacesByWallet(wallet)` - Get wallet's races
 
 ### WalletsService
+
 - `getOrCreateWallet(address)` - Initialize wallet
 - `getWallet(address)` - Get wallet
 - `getWalletWithRats(address)` - Get wallet + rats
@@ -64,8 +70,9 @@ MONGO_PASSWORD=ki4deBxAqTgBvMM8
 ## Usage Examples
 
 ### Mint a Rat
+
 ```typescript
-import { RatsService } from '@/lib/db';
+import { RatsService } from "@/lib/db";
 
 const rat = await RatsService.createRat(walletAddress, {
   name: "Lightning Whiskers",
@@ -83,11 +90,13 @@ const rat = await RatsService.createRat(walletAddress, {
 ```
 
 ### Get User's Rats
+
 ```typescript
 const rats = await RatsService.getRatsByOwner(walletAddress);
 ```
 
 ### Create & Enter Race
+
 ```typescript
 const race = await RacesService.createRace({
   title: "Downtown Dash",
@@ -100,14 +109,16 @@ await RacesService.enterRace(race.id, ratId, walletAddress);
 ```
 
 ### View Races
+
 ```typescript
 const active = await RacesService.getActiveRaces();
 const completed = await RacesService.getCompletedRaces(20);
 ```
 
 ### Seed Test Data
+
 ```typescript
-import { seedDatabase } from '@/lib/db/seed';
+import { seedDatabase } from "@/lib/db/seed";
 
 await seedDatabase();
 // Creates wallets, rats, and races for testing
@@ -133,6 +144,7 @@ await seedDatabase();
 ## Migration from Redis
 
 All functionality from Redis/Vercel KV has been ported:
+
 - ✅ Same API surface
 - ✅ Same data models
 - ✅ Same business logic
@@ -140,8 +152,8 @@ All functionality from Redis/Vercel KV has been ported:
 - ✅ Better for complex aggregations
 
 Changes:
+
 - Uses `_id` for MongoDB IDs
 - Uses `id` for application IDs (same as before)
 - Direct MongoDB queries instead of Redis commands
 - Proper indexes for performance
-

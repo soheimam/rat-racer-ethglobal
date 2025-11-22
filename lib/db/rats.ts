@@ -1,4 +1,4 @@
-import { getDb, generateId } from './client';
+import { generateId, getDb } from './client';
 import { Rat } from './types';
 
 export class RatsService {
@@ -7,7 +7,7 @@ export class RatsService {
      */
     static async createRat(owner: string, ratData: Omit<Rat, 'id' | 'owner' | 'createdAt' | '_id'>): Promise<Rat> {
         const db = await getDb();
-        
+
         const rat: Rat = {
             id: generateId('rat'),
             owner,
@@ -38,7 +38,7 @@ export class RatsService {
             .find<Rat>({ owner })
             .sort({ createdAt: -1 })
             .toArray();
-        
+
         return rats;
     }
 
@@ -118,7 +118,7 @@ export class RatsService {
                 agility: Math.floor(Math.random() * 50) + 50, // 50-100
                 bloodline: this.randomBloodline(),
             },
-            speeds: Array(5).fill(0).map(() => 
+            speeds: Array(5).fill(0).map(() =>
                 0.7 + Math.random() * 0.3 // 0.7 to 1.0
             ),
         };

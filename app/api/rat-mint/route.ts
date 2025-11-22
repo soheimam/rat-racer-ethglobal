@@ -3,229 +3,147 @@
  * 
  * Triggered by: RatMinted event from RatNFT contract
  * Purpose: Generate random metadata, upload to Vercel Blob, store in MongoDB
- * 
- * Flow:
- * 1. Webhook catches RatMinted event
- * 2. Validate payload
- * 3. Generate random stats/bloodline/metadata
- * 4. Upload metadata.json to Vercel Blob Storage
- * 5. Store in MongoDB
- * 6. Link to owner's wallet
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getAddress } from 'viem';
-import { put } from '@vercel/blob';
 import { RatsService, WalletsService } from '@/lib/db';
 import { logger } from '@/lib/logger';
-import { 
-  generateRatMetadata, 
-  calculateRarityScore,
-  type RatMetadata 
+import {
+    calculateRarityScore,
+    generateRatMetadata,
+    type RatMetadata
 } from '@/lib/metadata-generator';
+import { put } from '@vercel/blob';
+import { NextRequest, NextResponse } from 'next/server';
+import { getAddress } from 'viem';
 
-// Blob storage token
 const BLOB_READ_WRITE_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
+const BLOB_BASE_URL = process.env.BLOB_BASE_URL;
+const NEXT_PUBLIC_URL = process.env.NEXT_PUBLIC_URL;
 
-// Webhook payload structure (simplified - no on-chain stats)
 interface WebhookPayload {
-  event: {
-    name: string;
-    args: {
-      to: string;        // owner address
-      tokenId: string;
+    event: {
+        name: string;
+        args: {
+            to: string;
+            tokenId: string;
+        };
     };
-  };
-  transaction: {
-    hash: string;
-    blockNumber: string;
-  };
-  network: {
-    chainId: number;
-  };
-  webhookId?: string;
-  signature?: string;
+    transaction: {
+        hash: string;
+        blockNumber: string;
+    };
+    network: {
+        chainId: number;
+    };
 }
 
 export async function POST(request: NextRequest) {
-  const startTime = Date.now();
-  const requestId = logger.logApiEntry('rat-mint', request);
-  
-  // Create child logger with request context
-  const log = logger.child({ requestId, route: '/api/rat-mint' });
+    const startTime = Date.now();
+    const requestId = logger.logApiEntry('rat-mint', request);
 
-  try {
-    // 1. PARSE AND LOG FULL PAYLOAD
-    const payload: WebhookPayload = await request.json();
-    
-    logger.logWebhookPayload('RatMinted', payload);
-    
-    log.info('Processing rat mint event', {
-      event: payload.event.name,
-      tokenId: payload.event.args.tokenId,
-      owner: payload.event.args.owner,
-      txHash: payload.transaction.hash,
-      blockNumber: payload.transaction.blockNumber,
-    });
+    const log = logger.child({ requestId, route: '/api/rat-mint' });
 
-    // 2. VALIDATE payload structure
-    if (!payload.event || !payload.event.name) {
-      log.warn('Invalid payload structure - missing event', { payload });
-      return NextResponse.json(
-        { error: 'Invalid payload structure' },
-        { status: 400 }
-      );
+    try {
+        const payload: WebhookPayload = await request.json();
+
+        logger.logWebhookPayload('RatMinted', payload);
+
+        log.info('Processing rat mint event', {
+            event: payload.event.name,
+            tokenId: payload.event.args.tokenId,
+            owner: payload.event.args.to,
+            txHash: payload.transaction.hash,
+        });
+
+        if (!payload.event || payload.event.name !== 'RatMinted') {
+            log.warn('Invalid event type');
+            return NextResponse.json({ error: 'Invalid event type' }, { status: 400 });
+        }
+
+        const { to: owner, tokenId } = payload.event.args;
+        const ownerAddress = getAddress(owner);
+
+        // Generate random metadata
+        const metadata: RatMetadata = generateRatMetadata(Number(tokenId), ownerAddress);
+        const rarityScore = calculateRarityScore(metadata);
+
+        log.info('Generated rat metadata', {
+            tokenId,
+            name: metadata.name,
+            color: metadata.properties.color,
+            modelIndex: metadata.properties.modelIndex,
+            bloodline: metadata.properties.stats.bloodline,
+            imageUrl: metadata.image,
+            rarityScore,
+        });
+
+        // Upload to Vercel Blob
+        let metadataUrl = '';
+        if (BLOB_READ_WRITE_TOKEN) {
+            const blob = await put(`rats/metadata/${tokenId}.json`, JSON.stringify(metadata), {
+                access: 'public',
+                token: BLOB_READ_WRITE_TOKEN,
+            });
+            metadataUrl = blob.url;
+            log.info('Uploaded metadata to Blob Storage', {
+                url: metadataUrl,
+                expectedContractURI: BLOB_BASE_URL ? `${BLOB_BASE_URL}/${tokenId}.json` : 'N/A',
+            });
+        } else {
+            log.warn('BLOB_READ_WRITE_TOKEN not set, skipping blob upload');
+        }
+
+        // Store in MongoDB
+        const rat = await RatsService.createRat(ownerAddress, {
+            name: metadata.name,
+            modelIndex: metadata.properties.modelIndex,
+            textureType: 'baseColor',
+            imageUrl: metadataUrl || '',
+            stats: {
+                stamina: metadata.properties.stats.stamina,
+                agility: metadata.properties.stats.agility,
+                bloodline: metadata.properties.stats.bloodline,
+            },
+            speeds: metadata.properties.speeds,
+            gender: metadata.properties.gender,
+            dob: metadata.properties.dob,
+            wins: 0,
+            placed: 0,
+            losses: 0,
+            level: 1,
+        });
+
+        log.info('Stored rat in MongoDB', { ratId: rat.id });
+
+        // Link to wallet
+        await WalletsService.getOrCreateWallet(ownerAddress);
+
+        const duration = Date.now() - startTime;
+        logger.logApiExit('rat-mint', requestId, true, duration);
+
+        return NextResponse.json({
+            success: true,
+            tokenId,
+            rat: {
+                id: rat.id,
+                name: metadata.name,
+                rarityScore,
+                metadataUrl,
+            },
+        });
+
+    } catch (error: any) {
+        const duration = Date.now() - startTime;
+        logger.logApiExit('rat-mint', requestId, false, duration);
+
+        log.error('Failed to process rat mint', error, {
+            errorMessage: error.message,
+        });
+
+        return NextResponse.json(
+            { error: 'Failed to process rat mint', message: error.message },
+            { status: 500 }
+        );
     }
-
-    if (payload.event.name !== 'RatMinted') {
-      log.warn('Invalid event type', { 
-        expected: 'RatMinted', 
-        received: payload.event.name 
-      });
-      return NextResponse.json(
-        { error: `Invalid event type: ${payload.event.name}` },
-        { status: 400 }
-      );
-    }
-
-    // 3. VALIDATE chain ID
-    const chainId = payload.network.chainId;
-    if (chainId !== 8453 && chainId !== 84532) {
-      log.warn('Invalid chain ID', { chainId, expected: [8453, 84532] });
-      return NextResponse.json(
-        { error: `Invalid chain ID: ${chainId}` },
-        { status: 400 }
-      );
-    }
-
-    // 4. EXTRACT event data
-    const { to: owner, tokenId } = payload.event.args;
-
-    log.info('Extracted event data', {
-      owner,
-      tokenId,
-    });
-
-    // 5. GENERATE random metadata (stats, bloodline, etc.)
-    log.info('[GENERATOR] Generating random metadata', { tokenId });
-    
-    const metadata: RatMetadata = generateRatMetadata(
-      Number(tokenId),
-      owner
-    );
-
-    const rarityScore = calculateRarityScore(metadata);
-
-    log.info('[GENERATOR] Metadata generated', {
-      tokenId,
-      bloodline: metadata.properties.stats.bloodline,
-      stats: metadata.properties.stats,
-      rarityScore,
-    });
-
-    // 6. UPLOAD metadata.json to Vercel Blob Storage
-    log.info('[BLOB] Uploading metadata to Vercel Blob Storage', { tokenId });
-
-    if (!BLOB_READ_WRITE_TOKEN) {
-      throw new Error('BLOB_READ_WRITE_TOKEN not configured');
-    }
-
-    const metadataJson = JSON.stringify(metadata, null, 2);
-    const blobPath = `rats/metadata/${tokenId}.json`;
-
-    const blob = await put(blobPath, metadataJson, {
-      access: 'public',
-      contentType: 'application/json',
-      token: BLOB_READ_WRITE_TOKEN,
-    });
-
-    log.info('[BLOB] Metadata uploaded successfully', {
-      tokenId,
-      url: blob.url,
-      size: metadataJson.length,
-    });
-
-    logger.logDbOperation('BLOB_UPLOAD', 'metadata', {
-      tokenId,
-      url: blob.url,
-    });
-
-    // 7. PREPARE rat data for MongoDB
-    const ratData = {
-      name: metadata.name,
-      modelIndex: metadata.properties.modelIndex,
-      textureType: 'baseColor' as const,
-      imageUrl: metadata.image,
-      stats: {
-        stamina: metadata.properties.stats.stamina,
-        agility: metadata.properties.stats.agility,
-        bloodline: metadata.properties.stats.bloodline,
-      },
-      speeds: metadata.properties.speeds,
-      gender: metadata.properties.gender,
-      dob: metadata.properties.dob,
-      wins: 0,
-      placed: 0,
-      losses: 0,
-      level: 1,
-      metadataUrl: blob.url,
-      rarityScore,
-    };
-
-    log.info('Prepared rat data for MongoDB', { ratData });
-
-    // 8. STORE rat in MongoDB
-    logger.logDbOperation('INSERT', 'rats', { tokenId, owner });
-    
-    const rat = await RatsService.createRat(getAddress(owner), ratData);
-
-    log.info('Successfully stored rat in MongoDB', {
-      ratId: rat.id,
-      tokenId,
-      owner: rat.owner,
-      name: rat.name,
-    });
-
-    // 9. ENSURE wallet exists
-    await WalletsService.getOrCreateWallet(getAddress(owner));
-    
-    log.info('Wallet ensured in MongoDB', { owner: getAddress(owner) });
-
-    // 10. SUCCESS response
-    const duration = Date.now() - startTime;
-    logger.logApiExit('rat-mint', requestId, true, duration);
-
-    return NextResponse.json({
-      success: true,
-      ratId: rat.id,
-      tokenId,
-      owner: rat.owner,
-      message: 'Rat minted and stored successfully',
-      metadata: {
-        url: blob.url,
-        bloodline: rat.stats.bloodline,
-        stats: rat.stats,
-        rarityScore,
-      },
-    });
-
-  } catch (error: any) {
-    const duration = Date.now() - startTime;
-    logger.logApiExit('rat-mint', requestId, false, duration);
-    
-    log.error('Failed to process rat mint', error, {
-      errorType: error.constructor.name,
-      errorMessage: error.message,
-    });
-
-    return NextResponse.json(
-      {
-        error: 'Failed to process rat mint',
-        message: error.message,
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      },
-      { status: 500 }
-    );
-  }
 }
 

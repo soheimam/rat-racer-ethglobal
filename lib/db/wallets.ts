@@ -1,7 +1,7 @@
 import { getDb } from './client';
-import { Wallet } from './types';
-import { RatsService } from './rats';
 import { RacesService } from './races';
+import { RatsService } from './rats';
+import { Wallet } from './types';
 
 export class WalletsService {
     /**
@@ -10,7 +10,7 @@ export class WalletsService {
     static async getOrCreateWallet(address: string): Promise<Wallet> {
         const db = await getDb();
         const existing = await db.collection('wallets').findOne<Wallet>({ address });
-        
+
         if (existing) return existing;
 
         const wallet: Wallet = {
@@ -41,7 +41,7 @@ export class WalletsService {
     static async getWalletWithRats(address: string) {
         const wallet = await this.getOrCreateWallet(address);
         const rats = await RatsService.getRatsByOwner(address);
-        
+
         return {
             ...wallet,
             rats,

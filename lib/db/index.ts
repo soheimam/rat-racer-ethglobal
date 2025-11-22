@@ -1,7 +1,7 @@
 // MongoDB service exports
-export { getDb, getMongoClient, closeConnection, generateId } from './client';
-export { RatsService } from './rats';
+export { closeConnection, generateId, getDb, getMongoClient } from './client';
 export { RacesService } from './races';
-export { WalletsService } from './wallets';
+export { RatsService } from './rats';
 export * from './types';
+export { WalletsService } from './wallets';
 

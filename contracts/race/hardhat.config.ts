@@ -1,6 +1,6 @@
-import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox-viem";
 import * as dotenv from "dotenv";
+import { HardhatUserConfig } from "hardhat/config";
 
 // Load environment variables from parent directory
 dotenv.config({ path: "../.env" });

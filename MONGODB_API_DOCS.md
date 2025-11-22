@@ -11,6 +11,7 @@ All API routes use **MongoDB Atlas** for data storage with professional structur
 Location: `/lib/logger.ts`
 
 ### Features
+
 - Structured JSON logging (production-ready)
 - Multiple log levels (debug, info, warn, error)
 - Request tracking with unique IDs
@@ -22,28 +23,28 @@ Location: `/lib/logger.ts`
 ### Usage
 
 ```typescript
-import { logger } from '@/lib/logger';
+import { logger } from "@/lib/logger";
 
 // Basic logging
-logger.info('User logged in', { userId: '123', method: 'oauth' });
-logger.error('Payment failed', error, { orderId: '456' });
+logger.info("User logged in", { userId: "123", method: "oauth" });
+logger.error("Payment failed", error, { orderId: "456" });
 
 // Log webhook payload (full payload included)
-logger.logWebhookPayload('RatMinted', payload);
+logger.logWebhookPayload("RatMinted", payload);
 
 // Log API route
-const requestId = logger.logApiEntry('rat-mint', request);
-logger.logApiExit('rat-mint', requestId, true, 1234);
+const requestId = logger.logApiEntry("rat-mint", request);
+logger.logApiExit("rat-mint", requestId, true, 1234);
 
 // Log database operations
-logger.logDbOperation('INSERT', 'rats', { ratId: '123' });
+logger.logDbOperation("INSERT", "rats", { ratId: "123" });
 
 // Log contract calls
-logger.logContractCall('RatNFT', 'mint', [owner, name], result);
+logger.logContractCall("RatNFT", "mint", [owner, name], result);
 
 // Child logger with context
-const log = logger.child({ requestId: '123', route: '/api/mint' });
-log.info('Processing...'); // Includes requestId automatically
+const log = logger.child({ requestId: "123", route: "/api/mint" });
+log.info("Processing..."); // Includes requestId automatically
 ```
 
 ### Environment Variables
@@ -56,6 +57,7 @@ LOG_LEVEL=debug   # debug, info, warn, error (default: debug in dev, info in pro
 ### Output Examples
 
 **Development (Pretty)**:
+
 ```
 [14:23:45] INFO User logged in
   Data: {
@@ -69,8 +71,16 @@ LOG_LEVEL=debug   # debug, info, warn, error (default: debug in dev, info in pro
 ```
 
 **Production (JSON)**:
+
 ```json
-{"timestamp":"2024-01-01T14:23:45.123Z","level":"info","message":"User logged in","service":"rat-racer-api","environment":"production","data":{"userId":"123","method":"oauth"}}
+{
+  "timestamp": "2024-01-01T14:23:45.123Z",
+  "level": "info",
+  "message": "User logged in",
+  "service": "rat-racer-api",
+  "environment": "production",
+  "data": { "userId": "123", "method": "oauth" }
+}
 ```
 
 ---
@@ -82,6 +92,7 @@ LOG_LEVEL=debug   # debug, info, warn, error (default: debug in dev, info in pro
 **Triggered by**: `RatMinted` event from RatNFTV2
 
 **Webhook Payload**:
+
 ```json
 {
   "event": {
@@ -107,6 +118,7 @@ LOG_LEVEL=debug   # debug, info, warn, error (default: debug in dev, info in pro
 ```
 
 **Processing**:
+
 1. Logs full webhook payload
 2. Validates event type and chain ID
 3. Fetches complete metadata from contract
@@ -115,6 +127,7 @@ LOG_LEVEL=debug   # debug, info, warn, error (default: debug in dev, info in pro
 6. Ensures wallet exists in `wallets` collection
 
 **MongoDB Document**:
+
 ```javascript
 // Collection: rats
 {
@@ -142,6 +155,7 @@ LOG_LEVEL=debug   # debug, info, warn, error (default: debug in dev, info in pro
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -166,6 +180,7 @@ LOG_LEVEL=debug   # debug, info, warn, error (default: debug in dev, info in pro
 **THE MAGIC HAPPENS HERE!**
 
 **Webhook Payload**:
+
 ```json
 {
   "event": {
@@ -186,6 +201,7 @@ LOG_LEVEL=debug   # debug, info, warn, error (default: debug in dev, info in pro
 ```
 
 **Processing**:
+
 1. Logs full webhook payload
 2. Fetches race data from contract
 3. Fetches all 6 rats' stats from contract
@@ -200,22 +216,24 @@ LOG_LEVEL=debug   # debug, info, warn, error (default: debug in dev, info in pro
 6. Schedules `finishRace()` contract call (60s later)
 
 **Simulation Algorithm**:
+
 ```typescript
 For each rat:
   baseSpeed = (stamina×0.3 + agility×0.4 + speed×0.3) / 100
   baseSpeed *= bloodlineMultiplier
-  
+
   For each of 5 segments:
     variance = ±10% based on stamina
     fatigue = increases in later segments if low stamina
     segmentSpeed = baseSpeed × randomFactor × fatigueFactor
-  
+
   totalTime = sum(segmentLength / segmentSpeed)
 
 Sort by totalTime → Final positions
 ```
 
 **MongoDB Document**:
+
 ```javascript
 // Collection: races
 {
@@ -256,6 +274,7 @@ Sort by totalTime → Final positions
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -278,6 +297,7 @@ Sort by totalTime → Final positions
 **Triggered by**: `RaceFinished` event from RaceManagerV2
 
 **Webhook Payload**:
+
 ```json
 {
   "event": {
@@ -286,7 +306,14 @@ Sort by totalTime → Final positions
       "raceId": "123",
       "winningRatTokenIds": ["3", "1", "5", "2", "4", "6"],
       "winners": ["0x...", "0x...", "0x...", "0x...", "0x...", "0x..."],
-      "prizes": ["270000000000000000", "162000000000000000", "108000000000000000", "0", "0", "0"]
+      "prizes": [
+        "270000000000000000",
+        "162000000000000000",
+        "108000000000000000",
+        "0",
+        "0",
+        "0"
+      ]
     }
   },
   "transaction": {
@@ -300,6 +327,7 @@ Sort by totalTime → Final positions
 ```
 
 **Processing**:
+
 1. Logs full webhook payload
 2. Fetches race from MongoDB
 3. Verifies on-chain results match calculation
@@ -308,6 +336,7 @@ Sort by totalTime → Final positions
 6. Updates winner's wallet stats
 
 **MongoDB Updates**:
+
 ```javascript
 // races collection
 {
@@ -345,6 +374,7 @@ Sort by totalTime → Final positions
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -352,9 +382,24 @@ Sort by totalTime → Final positions
   "settled": true,
   "message": "Race settlement confirmed and stats updated",
   "prizes": [
-    { "position": 1, "winner": "0x...", "ratTokenId": "3", "prize": "270000000000000000" },
-    { "position": 2, "winner": "0x...", "ratTokenId": "1", "prize": "162000000000000000" },
-    { "position": 3, "winner": "0x...", "ratTokenId": "5", "prize": "108000000000000000" },
+    {
+      "position": 1,
+      "winner": "0x...",
+      "ratTokenId": "3",
+      "prize": "270000000000000000"
+    },
+    {
+      "position": 2,
+      "winner": "0x...",
+      "ratTokenId": "1",
+      "prize": "162000000000000000"
+    },
+    {
+      "position": 3,
+      "winner": "0x...",
+      "ratTokenId": "5",
+      "prize": "108000000000000000"
+    },
     { "position": 4, "winner": "0x...", "ratTokenId": "2", "prize": "0" },
     { "position": 5, "winner": "0x...", "ratTokenId": "4", "prize": "0" },
     { "position": 6, "winner": "0x...", "ratTokenId": "6", "prize": "0" }
@@ -367,6 +412,7 @@ Sort by totalTime → Final positions
 ## Log Output Examples
 
 ### rat-mint Route
+
 ```
 [14:30:00] INFO [rat-mint] API request received
   Data: {
@@ -405,6 +451,7 @@ Sort by totalTime → Final positions
 ```
 
 ### race-started Route
+
 ```
 [15:00:00] INFO [race-started] API request received
 
@@ -453,6 +500,7 @@ Sort by totalTime → Final positions
 ## MongoDB Collections
 
 ### `rats`
+
 ```javascript
 {
   _id: ObjectId,
@@ -479,6 +527,7 @@ Sort by totalTime → Final positions
 ```
 
 ### `races`
+
 ```javascript
 {
   _id: ObjectId,
@@ -514,6 +563,7 @@ Sort by totalTime → Final positions
 ```
 
 ### `wallets`
+
 ```javascript
 {
   _id: ObjectId,
@@ -572,4 +622,3 @@ curl -X POST http://localhost:3000/api/rat-mint \
 ---
 
 **Complete MongoDB Atlas + Professional Logging Implementation Ready**
-

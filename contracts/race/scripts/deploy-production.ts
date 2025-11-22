@@ -1,6 +1,6 @@
+import * as dotenv from "dotenv";
 import hre from "hardhat";
 import { formatEther, parseEther } from "viem";
-import * as dotenv from "dotenv";
 
 dotenv.config({ path: "../../.env" });
 
@@ -19,9 +19,9 @@ async function main() {
   console.log(`Network: ${hre.network.name}`);
   console.log(`Deployer: ${deployer.account.address}`);
   console.log(`Oracle: ${oracleAddress}`);
-  
-  const balance = await publicClient.getBalance({ 
-    address: deployer.account.address 
+
+  const balance = await publicClient.getBalance({
+    address: deployer.account.address
   });
   console.log(`Balance: ${formatEther(balance)} ETH\n`);
 
@@ -76,7 +76,7 @@ async function main() {
   console.log("╔════════════════════════════════════════════════════════════╗");
   console.log("║           DEPLOYMENT SUCCESSFUL - SAVE THESE              ║");
   console.log("╚════════════════════════════════════════════════════════════╝\n");
-  
+
   console.log("📋 Contract Addresses:");
   console.log("─────────────────────────────────────────────────────────────");
   console.log(`RAT_NFT_ADDRESS="${ratNFT.address}"`);

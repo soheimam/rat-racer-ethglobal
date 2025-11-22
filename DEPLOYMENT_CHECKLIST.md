@@ -93,6 +93,7 @@ NODE_ENV=production
 ### Phase 6: Webhook Configuration
 
 #### Alchemy Webhook Setup
+
 - [ ] **6.1** Go to Alchemy dashboard → Notify → Create Webhook
 - [ ] **6.2** Select "Address Activity"
 - [ ] **6.3** Add RatNFT address
@@ -185,23 +186,27 @@ NODE_ENV=production
 ## Common Issues & Solutions
 
 ### "Metadata not found"
+
 - Check BLOB_STORAGE_BASE_URI is set correctly
 - Verify blob token has write permissions
 - Check /api/rat-mint logs for upload errors
 
 ### "Race not starting"
+
 - Verify all 6 participants entered
 - Check RaceStarted event was emitted
 - Verify webhook is configured
 - Check /api/race-started logs
 
 ### "Race not settling"
+
 - Check oracle wallet has ETH for gas
 - Verify BACKEND_ROLE granted
 - Check /api/race-started scheduled the call
 - Check finishRace transaction on BaseScan
 
 ### "Stats not updating"
+
 - Check /api/race-finished webhook fired
 - Verify MongoDB connection
 - Check MongoDB write permissions
@@ -222,6 +227,7 @@ NODE_ENV=production
 ## Performance Benchmarks
 
 ### Expected Metrics
+
 - Mint transaction: ~0.01 ETH gas
 - Race entry: ~0.005 ETH gas
 - Race settlement: ~0.02 ETH gas
@@ -250,4 +256,3 @@ NODE_ENV=production
 
 Last updated: [Date]
 Deployed by: [Name]
-

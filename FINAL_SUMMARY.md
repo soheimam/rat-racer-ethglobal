@@ -9,6 +9,7 @@ A complete on-chain NFT racing game with sophisticated game theory mechanics, of
 ## Key Achievements
 
 ### ✓ Metadata System (Vercel Blob Storage)
+
 - **Random stat generation** at mint time (stamina, agility, speed: 50-100)
 - **Bloodline rarity system** with 6 tiers (5% - 25% drop rates)
 - **OpenSea-compatible metadata** with full attribute system
@@ -17,6 +18,7 @@ A complete on-chain NFT racing game with sophisticated game theory mechanics, of
 - **Zero on-chain stat storage** (gas optimization)
 
 ### ✓ Advanced Race Simulation Engine
+
 - **6 unique bloodline perks** with distinct playstyles:
   - Speed Demon: Explosive start, low variance early game
   - Underground Elite: Late-game scaling, gets stronger each segment
@@ -24,20 +26,18 @@ A complete on-chain NFT racing game with sophisticated game theory mechanics, of
   - City Slicker: Time-of-day specialist (rush hour bonuses)
   - Alley Cat: Consistent performer, fatigue-resistant
   - Sewer Dweller: High-variance wildcard
-  
 - **Complex stat interactions**:
   - Stamina controls fatigue (15% impact across 5 segments)
   - Agility controls variance (50-100% variance control)
   - Speed determines base performance ceiling
-  
 - **Time-of-day modifiers** (5 time periods):
   - Dead of Night: Stamina bonus
   - Morning Rush: City Slicker +12%
   - Midday Heat: Extra fatigue
   - Evening Rush: City Slicker +12%, agility boost
   - Night Racing: Underground Elite +8%
-  
 - **Counter-matchup system**:
+
   - Each bloodline has +3-5% against certain opponents
   - Each bloodline has -3-5% against counters
   - Strategic depth through opponent scouting
@@ -49,6 +49,7 @@ A complete on-chain NFT racing game with sophisticated game theory mechanics, of
   - Competitive advantage identification
 
 ### ✓ MongoDB Integration (Zero Redis)
+
 - **Complete migration from Redis to MongoDB Atlas**
 - **3 collections**: rats, races, wallets
 - **Full indexing** for performance
@@ -57,6 +58,7 @@ A complete on-chain NFT racing game with sophisticated game theory mechanics, of
 - **Service layer** (RatsService, RacesService, WalletsService)
 
 ### ✓ Professional Logging System
+
 - **Structured JSON logging** (production-ready)
 - **Multiple log levels** (debug, info, warn, error)
 - **Request tracking** with unique IDs
@@ -67,6 +69,7 @@ A complete on-chain NFT racing game with sophisticated game theory mechanics, of
 - **ZERO emojis** (professional codebase)
 
 ### ✓ Smart Contracts (Simplified)
+
 - **RatNFT.sol**: Minimal ERC721 (ownership only)
 - **RaceManager.sol**: Full race logic with oracle settlement
 - **RaceToken.sol**: Mock ERC20 for entry fees
@@ -76,6 +79,7 @@ A complete on-chain NFT racing game with sophisticated game theory mechanics, of
 - **10% creator fee** built-in
 
 ### ✓ API Routes (MongoDB-Adapted)
+
 - **POST /api/rat-mint**: Generate metadata → upload to Blob → store in MongoDB
 - **POST /api/race-started**: Run simulation → store results → schedule settlement
 - **POST /api/race-finished**: Confirm settlement → update stats
@@ -88,12 +92,14 @@ A complete on-chain NFT racing game with sophisticated game theory mechanics, of
 ## Technical Stack
 
 ### Blockchain
+
 - **Network**: Base (ChainID 8453)
 - **Contracts**: Solidity 0.8.20 + OpenZeppelin
 - **Development**: Hardhat + Ignition
 - **Testing**: Hardhat Test + Chai
 
 ### Backend
+
 - **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
 - **Runtime**: Vercel Edge / Node.js
@@ -101,6 +107,7 @@ A complete on-chain NFT racing game with sophisticated game theory mechanics, of
 - **Storage**: Vercel Blob Storage
 
 ### Infrastructure
+
 - **Hosting**: Vercel
 - **Webhooks**: Alchemy/QuickNode
 - **Logging**: Structured JSON
@@ -152,6 +159,7 @@ rat-racer-ethglobal/
 ## Data Flow
 
 ### Mint Flow
+
 ```
 User → mint() → RatNFT
            ↓ emit RatMinted
@@ -167,6 +175,7 @@ User → mint() → RatNFT
 ```
 
 ### Race Flow
+
 ```
 6 Users → enterRace() → RaceManager
               ↓ (when 6/6)
@@ -205,6 +214,7 @@ User → mint() → RatNFT
 ## Key Features
 
 ### Game Theory & Strategy
+
 - **Bloodline meta-game** with rock-paper-scissors matchups
 - **Time-of-day optimization** for race scheduling
 - **Opponent scouting** for competitive advantage
@@ -213,6 +223,7 @@ User → mint() → RatNFT
 - **Deterministic outcomes** (no pure RNG)
 
 ### Technical Excellence
+
 - **Professional logging** (no emojis, structured JSON)
 - **Zero Redis dependencies** (pure MongoDB)
 - **Gas-optimized contracts** (minimal on-chain storage)
@@ -221,6 +232,7 @@ User → mint() → RatNFT
 - **Oracle-based settlement** (secure + reliable)
 
 ### User Experience
+
 - **OpenSea compatibility** (standard NFT metadata)
 - **Real-time stats updates** (MongoDB sync)
 - **60-second race animations** (pre-calculated results)
@@ -274,6 +286,7 @@ NODE_ENV=production
 ## Documentation
 
 ### For Players
+
 - `GAME_MECHANICS.md` - Complete strategy guide
   - Bloodline playstyles
   - Stat optimization
@@ -282,12 +295,14 @@ NODE_ENV=production
   - Meta-game predictions
 
 ### For Developers
+
 - `SYSTEM_ARCHITECTURE.md` - Technical deep-dive
 - `MONGODB_API_DOCS.md` - API route documentation
 - `MONGODB_SETUP.md` - Database setup guide
 - `DEPLOYMENT_CHECKLIST.md` - Step-by-step deployment
 
 ### For Contracts
+
 - `contracts/README.md` - Smart contract guide
 - `contracts/DEPLOYMENT_GUIDE.md` - Contract deployment
 - `contracts/ARCHITECTURE.md` - Contract architecture
@@ -297,6 +312,7 @@ NODE_ENV=production
 ## Testing
 
 ### Unit Tests
+
 ```bash
 # Contract tests
 cd contracts/rat && npx hardhat test
@@ -304,12 +320,14 @@ cd contracts/race && npx hardhat test
 ```
 
 ### Integration Tests
+
 ```bash
 # Full flow test
 npm run test:integration
 ```
 
 ### Manual Testing
+
 ```bash
 # Test mint
 npx hardhat run scripts/mint-test.ts --network base
@@ -326,6 +344,7 @@ mongosh "mongodb+srv://..." --eval "db.rats.find()"
 ## Performance Metrics
 
 ### Expected Performance
+
 - **Mint gas cost**: ~0.01 ETH
 - **Race entry gas**: ~0.005 ETH
 - **Settlement gas**: ~0.02 ETH
@@ -335,6 +354,7 @@ mongosh "mongodb+srv://..." --eval "db.rats.find()"
 - **API response**: <5 seconds total
 
 ### Scalability
+
 - **MongoDB**: Handles 1000+ req/sec
 - **Vercel Blob**: Unlimited reads, 100GB storage
 - **Oracle**: Can process multiple races concurrently
@@ -345,18 +365,21 @@ mongosh "mongodb+srv://..." --eval "db.rats.find()"
 ## Security
 
 ### Smart Contracts
+
 - ✓ Access control (onlyOwner, BACKEND_ROLE)
 - ✓ Reentrancy guards on transfers
 - ✓ Input validation (participants, positions)
 - ✓ State machine enforcement
 
 ### Backend
+
 - ✓ Webhook signature validation (future)
 - ✓ Event validation (chain ID, addresses)
 - ✓ Sensitive data redaction
 - ✓ Error handling + logging
 
 ### Oracle
+
 - ✓ Dedicated wallet (isolated keys)
 - ✓ Role-based access control
 - ✓ Result verification
@@ -367,6 +390,7 @@ mongosh "mongodb+srv://..." --eval "db.rats.find()"
 ## Known Limitations & Future Work
 
 ### Current Limitations
+
 - Single track (trackId: 1)
 - Fixed race size (6 participants)
 - Manual race starting (not automated matchmaking)
@@ -374,6 +398,7 @@ mongosh "mongodb+srv://..." --eval "db.rats.find()"
 - No ELO/ranking system yet
 
 ### Planned Features
+
 - Multiple track types
 - Weather conditions
 - Rat breeding/genetics
@@ -416,7 +441,7 @@ mongosh "mongodb+srv://..." --eval "db.rats.find()"
 **Metadata**: Vercel Blob Storage ✓  
 **Game Mechanics**: Advanced (strategy-driven) ✓  
 **Smart Contracts**: Deployed (ready) ✓  
-**Documentation**: Complete ✓  
+**Documentation**: Complete ✓
 
 ---
 
@@ -447,4 +472,3 @@ npx hardhat run scripts/mint-test.ts --network base
 **Game Theory**: Deep strategic mechanics  
 **Production Ready**: Yes  
 **Documentation**: Complete
-

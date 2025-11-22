@@ -9,22 +9,26 @@ Rat Racer is a fully on-chain NFT racing game with off-chain metadata generation
 ## Tech Stack
 
 ### Smart Contracts (Solidity)
+
 - **RatNFT.sol**: ERC721 NFT contract (minimal on-chain storage)
 - **RaceManager.sol**: Race creation, entry, settlement
 - **RaceToken.sol**: Mock ERC20 for entry fees
 - **Network**: Base (ChainID 8453)
 
 ### Backend (TypeScript/Next.js)
+
 - **Framework**: Next.js 14 (App Router)
 - **Runtime**: Node.js / Vercel Edge
 - **Language**: TypeScript
 
 ### Data Layer
+
 - **Database**: MongoDB Atlas
 - **Blob Storage**: Vercel Blob Storage (NFT metadata)
 - **Collections**: `rats`, `races`, `wallets`
 
 ### Infrastructure
+
 - **Deployment**: Vercel
 - **Webhooks**: Alchemy/QuickNode (blockchain events)
 - **Logging**: Structured JSON logs (professional, no emojis)
@@ -60,6 +64,7 @@ User → Calls mint() → RatNFT Contract
 ```
 
 **Key Points**:
+
 - **All stats generated off-chain** (gas savings)
 - **Metadata is immutable** once uploaded
 - **OpenSea compatible** (standard NFT metadata format)
@@ -93,6 +98,7 @@ Any participant → Calls startRace()
 ```
 
 **Key Points**:
+
 - **10% creator fee** taken from prize pool
 - **Entry fees in ERC20** (RaceToken or custom)
 - **Rat ownership verified** on-chain
@@ -143,6 +149,7 @@ startRace() called → Emits RaceStarted(raceId)
 ```
 
 **Key Points**:
+
 - **Deterministic but complex** - not simple RNG
 - **Multiple factors**: stats, bloodline, time, composition
 - **Results pre-calculated** before user sees race
@@ -185,6 +192,7 @@ Update MongoDB                    Update rat stats in MongoDB
 ```
 
 **Key Points**:
+
 - **Automatic prize distribution** in smart contract
 - **Backend oracle role** for security
 - **MongoDB stays in sync** with on-chain state
@@ -195,21 +203,23 @@ Update MongoDB                    Update rat stats in MongoDB
 ## Smart Contract Architecture
 
 ### RatNFT.sol (Simplified)
+
 ```solidity
 contract RatNFT is ERC721Enumerable {
     // Minimal on-chain storage
     uint256 private _nextTokenId;
     string private _baseTokenURI;
-    
+
     function mint(address to) external returns (uint256);
     function setBaseURI(string memory baseURI) external onlyOwner;
     function tokenURI(uint256 tokenId) external view returns (string);
-    
+
     // Emits: RatMinted(address indexed to, uint256 indexed tokenId)
 }
 ```
 
 **Changes from previous version**:
+
 - ❌ Removed on-chain stats storage
 - ❌ Removed metadata structs
 - ✅ Simple ownership tracking only
@@ -218,10 +228,11 @@ contract RatNFT is ERC721Enumerable {
 ---
 
 ### RaceManager.sol
+
 ```solidity
 contract RaceManager is AccessControl {
     bytes32 public constant BACKEND_ROLE = keccak256("BACKEND_ROLE");
-    
+
     struct Race {
         uint256 raceId;
         address creator;
@@ -231,19 +242,20 @@ contract RaceManager is AccessControl {
         uint256 prizePool;
         // ... more fields
     }
-    
+
     function createRace(...) external returns (uint256);
     function enterRace(uint256 raceId, uint256 ratTokenId) external;
     function startRace(uint256 raceId) external;
-    function finishRace(uint256 raceId, uint256[] calldata positions) 
+    function finishRace(uint256 raceId, uint256[] calldata positions)
         external onlyRole(BACKEND_ROLE);
-    
+
     // Events:
     // RaceCreated, RaceEntered, RaceStarted, RaceFinished
 }
 ```
 
 **Key Features**:
+
 - ✅ BACKEND_ROLE for oracle settlement
 - ✅ Automatic prize distribution
 - ✅ 10% creator fee
@@ -254,6 +266,7 @@ contract RaceManager is AccessControl {
 ## MongoDB Schema
 
 ### rats Collection
+
 ```javascript
 {
   _id: ObjectId,
@@ -283,6 +296,7 @@ contract RaceManager is AccessControl {
 ```
 
 ### races Collection
+
 ```javascript
 {
   _id: ObjectId,
@@ -296,7 +310,7 @@ contract RaceManager is AccessControl {
   participants: [RaceEntry],
   startedAt: String,
   completedAt: String,
-  
+
   // Simulation results (added by /api/race-started)
   simulationResults: {
     positions: [String],         // ["3", "1", "5", "2", "4", "6"]
@@ -320,14 +334,14 @@ contract RaceManager is AccessControl {
       competitiveInsights: [String]
     }
   },
-  
+
   // Settlement data (added by /api/race-finished)
   settled: Boolean,
   settlementTx: String,
   settlementBlock: String,
   onChainWinners: [String],
   onChainPrizes: [String],
-  
+
   transactionHash: String,
   blockNumber: String,
   calculatedAt: String,
@@ -371,16 +385,19 @@ NODE_ENV=production
 ## API Routes
 
 ### POST /api/rat-mint
+
 - **Trigger**: RatMinted event
 - **Purpose**: Generate metadata, upload to Blob, store in MongoDB
 - **Response**: `{ success, ratId, tokenId, metadata }`
 
 ### POST /api/race-started
+
 - **Trigger**: RaceStarted event
 - **Purpose**: Run simulation, store results, schedule settlement
 - **Response**: `{ success, raceId, winners, analysis }`
 
 ### POST /api/race-finished
+
 - **Trigger**: RaceFinished event
 - **Purpose**: Confirm settlement, update stats
 - **Response**: `{ success, raceId, prizes }`
@@ -390,6 +407,7 @@ NODE_ENV=production
 ## Game Mechanics Summary
 
 ### Bloodlines (6 types)
+
 1. **Speed Demon** (5%): Explosive start, weak late game
 2. **Underground Elite** (10%): Late game beast
 3. **Street Runner** (20%): Adaptive all-rounder
@@ -398,6 +416,7 @@ NODE_ENV=production
 6. **Sewer Dweller** (15%): Chaotic wildcard
 
 ### Time-of-Day Modifiers
+
 - Dead of Night: Stamina bonus
 - Morning Rush: City Slicker +12%
 - Midday Heat: Extra fatigue
@@ -405,11 +424,13 @@ NODE_ENV=production
 - Night Racing: Underground Elite +8%
 
 ### Counter-Matchup System
+
 - Each bloodline has +3-5% speed against certain opponents
 - Each bloodline has -3-5% speed against counters
 - Stacks if multiple opponents of same bloodline
 
 ### Strategic Depth
+
 - Race composition analysis
 - Opponent scouting
 - Time-based strategy
@@ -421,6 +442,7 @@ NODE_ENV=production
 ## Deployment Steps
 
 ### 1. Deploy Smart Contracts
+
 ```bash
 cd contracts/rat
 npx hardhat ignition deploy ./ignition/modules/RatNFT.ts --network base
@@ -430,23 +452,27 @@ npx hardhat ignition deploy ./ignition/modules/RaceContracts.ts --network base
 ```
 
 ### 2. Set Base URI
+
 ```bash
 # After deployment, set NEXT_PUBLIC_RAT_NFT_ADDRESS and BLOB_STORAGE_BASE_URI
 npx hardhat run scripts/set-base-uri.ts --network base
 ```
 
 ### 3. Deploy Backend
+
 ```bash
 # Set all environment variables in Vercel
 vercel --prod
 ```
 
 ### 4. Configure Webhooks
+
 - Alchemy/QuickNode dashboard
 - Add webhooks for: RatMinted, RaceStarted, RaceFinished
 - Point to: https://your-app.vercel.app/api/*
 
 ### 5. Grant Oracle Role
+
 ```bash
 # Grant BACKEND_ROLE to oracle wallet
 npx hardhat run scripts/grant-backend-role.ts --network base
@@ -457,18 +483,21 @@ npx hardhat run scripts/grant-backend-role.ts --network base
 ## Security Considerations
 
 ### Smart Contracts
+
 - ✅ Access control (onlyOwner, BACKEND_ROLE)
 - ✅ Reentrancy guards on prize distribution
 - ✅ Input validation (max participants, valid positions)
 - ✅ Race state machine (can't start twice, can't finish before start)
 
 ### Backend
+
 - ✅ Webhook signature validation (future)
 - ✅ Event validation (chain ID, contract address)
 - ✅ Sensitive data redaction in logs
 - ✅ Error handling with structured logging
 
 ### Oracle
+
 - ✅ Dedicated wallet for settlement
 - ✅ Role-based access control
 - ✅ Results verification (match pre-calculated)
@@ -479,6 +508,7 @@ npx hardhat run scripts/grant-backend-role.ts --network base
 ## Monitoring & Logging
 
 ### Structured JSON Logs
+
 ```json
 {
   "timestamp": "2024-01-01T12:00:00.000Z",
@@ -495,12 +525,14 @@ npx hardhat run scripts/grant-backend-role.ts --network base
 ```
 
 ### Log Levels
+
 - **debug**: Detailed simulation steps, per-rat calculations
 - **info**: API requests, race results, settlements
 - **warn**: Invalid payloads, missing data, mismatches
 - **error**: Failed transactions, exceptions, system errors
 
 ### Monitoring Points
+
 - API route latency
 - MongoDB query performance
 - Blob storage upload success rate
@@ -512,6 +544,7 @@ npx hardhat run scripts/grant-backend-role.ts --network base
 ## Future Enhancements
 
 ### Planned Features
+
 - [ ] Multiple track types (different modifiers)
 - [ ] Weather conditions
 - [ ] Rat breeding/genetics system
@@ -524,6 +557,7 @@ npx hardhat run scripts/grant-backend-role.ts --network base
 - [ ] Social features (guilds, friends)
 
 ### Scaling Considerations
+
 - MongoDB connection pooling
 - CDN for blob storage
 - Read replicas for analytics
@@ -535,6 +569,7 @@ npx hardhat run scripts/grant-backend-role.ts --network base
 ## Testing
 
 ### Contract Tests
+
 ```bash
 cd contracts/rat
 npx hardhat test
@@ -544,12 +579,14 @@ npx hardhat test
 ```
 
 ### Integration Tests
+
 ```bash
 # Test full flow locally
 npm run test:integration
 ```
 
 ### Load Testing
+
 ```bash
 # Simulate multiple concurrent races
 npm run test:load
@@ -570,4 +607,3 @@ npm run test:load
 **System Status**: Production Ready ✓
 
 **Zero Redis dependencies** | **MongoDB Atlas** | **Professional logging** | **Advanced game theory** | **Vercel Blob metadata**
-

@@ -99,7 +99,7 @@ export async function seedDatabase() {
     console.log('✅ Created 1 completed race with results');
 
     console.log('🎉 MongoDB database seeded successfully!');
-    
+
     return {
         wallets: [wallet1, wallet2, wallet3],
         rats,
