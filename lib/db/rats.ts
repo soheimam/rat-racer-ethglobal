@@ -30,6 +30,15 @@ export class RatsService {
     }
 
     /**
+     * Get a rat by token ID (from contract)
+     */
+    static async getRatByTokenId(tokenId: number): Promise<Rat | null> {
+        const db = await getDb();
+        const rat = await db.collection('rats').findOne<Rat>({ tokenId });
+        return rat;
+    }
+
+    /**
      * Get all rats owned by a wallet
      */
     static async getRatsByOwner(owner: string): Promise<Rat[]> {
