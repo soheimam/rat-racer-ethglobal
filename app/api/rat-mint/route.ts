@@ -86,6 +86,33 @@ export async function POST(request: NextRequest) {
         const ownerAddress = getAddress(owner);
         const selectedImageIndex = Number(imageIndex); // 0=white, 1=brown, 2=pink
 
+        // Idempotency check: If rat already exists, return success (webhook retry/duplicate)
+        try {
+            const existingRat = await RatsService.getRatByTokenId(Number(tokenId));
+            if (existingRat) {
+                log.info('Rat already exists (duplicate webhook), returning existing data', {
+                    tokenId,
+                    existingRatId: existingRat.id,
+                });
+
+                const duration = Date.now() - startTime;
+                logger.logApiExit('rat-mint', requestId, true, duration);
+
+                return NextResponse.json({
+                    success: true,
+                    tokenId,
+                    rat: {
+                        id: existingRat.id,
+                        name: existingRat.name,
+                        metadataUrl: existingRat.imageUrl,
+                    },
+                });
+            }
+        } catch (error) {
+            // Rat doesn't exist, continue with mint
+            log.info('Rat does not exist, proceeding with mint', { tokenId });
+        }
+
         // Map imageIndex to color name  
         const imageNames = ['white', 'brown', 'pink'];
         const selectedImage = imageNames[selectedImageIndex];
@@ -105,17 +132,33 @@ export async function POST(request: NextRequest) {
         });
 
         // Upload to Vercel Blob
+        // Using tokenId.json ensures unique filename per NFT (ERC721 standard)
         let metadataUrl = '';
         if (BLOB_READ_WRITE_TOKEN) {
-            const blob = await put(`rats/metadata/${tokenId}.json`, JSON.stringify(metadata), {
-                access: 'public',
-                token: BLOB_READ_WRITE_TOKEN,
-            });
-            metadataUrl = blob.url;
-            log.info('Uploaded metadata to Blob Storage', {
-                url: metadataUrl,
-                expectedContractURI: BLOB_BASE_URL ? `${BLOB_BASE_URL}/${tokenId}.json` : 'N/A',
-            });
+            try {
+                const blob = await put(`rats/metadata/${tokenId}.json`, JSON.stringify(metadata), {
+                    access: 'public',
+                    token: BLOB_READ_WRITE_TOKEN,
+                    addRandomSuffix: false, // Keep clean tokenId.json naming (industry standard)
+                });
+                metadataUrl = blob.url;
+                log.info('Uploaded metadata to Blob Storage', {
+                    url: metadataUrl,
+                    expectedContractURI: BLOB_BASE_URL ? `${BLOB_BASE_URL}/${tokenId}.json` : 'N/A',
+                });
+            } catch (blobError: any) {
+                // If blob already exists, it's likely a webhook retry - log and continue
+                if (blobError.message?.includes('already exists')) {
+                    log.warn('Blob already exists (webhook retry), using existing blob', {
+                        tokenId,
+                        expectedUrl: BLOB_BASE_URL ? `${BLOB_BASE_URL}/${tokenId}.json` : 'N/A',
+                    });
+                    metadataUrl = BLOB_BASE_URL ? `${BLOB_BASE_URL}/${tokenId}.json` : '';
+                } else {
+                    // Other blob errors should fail
+                    throw blobError;
+                }
+            }
         } else {
             log.warn('BLOB_READ_WRITE_TOKEN not set, skipping blob upload');
         }
