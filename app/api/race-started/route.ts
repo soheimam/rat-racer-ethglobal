@@ -5,10 +5,10 @@
  * Purpose: Mark race as started in MongoDB, initiate simulation
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getAddress } from 'viem';
 import { getDb } from '@/lib/db/client';
 import { logger } from '@/lib/logger';
+import { NextRequest, NextResponse } from 'next/server';
+import { getAddress } from 'viem';
 
 interface WebhookPayload {
   event: {
@@ -30,12 +30,17 @@ interface WebhookPayload {
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const requestId = logger.logApiEntry('race-started', request);
-  
+
   const log = logger.child({ requestId, route: '/api/race-started' });
 
   try {
     const payload: WebhookPayload = await request.json();
-    
+
+    // Log full payload structure for debugging (we don't know exact webhook format yet)
+    log.info('RAW WEBHOOK PAYLOAD', {
+      fullPayload: JSON.stringify(payload, null, 2)
+    });
+
     logger.logWebhookPayload('RaceStarted', payload);
 
     log.info('Processing race started event', {
@@ -82,7 +87,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     const duration = Date.now() - startTime;
     logger.logApiExit('race-started', requestId, false, duration);
-    
+
     log.error('Failed to process race started', error, {
       errorMessage: error.message,
     });

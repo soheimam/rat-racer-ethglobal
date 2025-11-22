@@ -124,7 +124,8 @@ function generateRaceSpeeds(stats: RatStats, bloodlineMultiplier: number): numbe
  */
 export function generateRatMetadata(
     tokenId: number,
-    ownerAddress: string
+    ownerAddress: string,
+    selectedColor?: string // 'white', 'brown', or 'pink'
 ): RatMetadata {
     // Roll for bloodline (determines rarity and stat ranges)
     const bloodline = rollBloodline();
@@ -138,9 +139,8 @@ export function generateRatMetadata(
     // Random gender
     const gender = Math.random() > 0.5 ? 'male' : 'female';
 
-    // Random color (matches available PNG files)
-    const colorIndex = randomInt(0, RAT_COLORS.length - 1);
-    const color = RAT_COLORS[colorIndex];
+    // Use selected color from contract event, or random if not provided
+    const color = selectedColor || RAT_COLORS[randomInt(0, RAT_COLORS.length - 1)];
 
     // Random 3D model (1-6 for race rendering)
     const modelIndex = randomInt(1, 6);

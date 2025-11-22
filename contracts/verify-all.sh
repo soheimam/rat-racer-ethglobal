@@ -1,45 +1,25 @@
 #!/bin/bash
 
-# Verify all deployed contracts on Basescan
+cd /Users/quix/git/rat-racer-ethglobal/contracts
 
-set -e
+echo "========================================="
+echo "Verifying Contracts on Base Mainnet"
+echo "=========================================\n"
 
-echo "=========================================="
-echo "Verifying Contracts on Basescan"
-echo "=========================================="
-echo ""
-
-# Load environment variables
-source ../.env
-
-RATNFT_ADDRESS="0x7fdcbf84aeafee37994c149f15f9fd8b663accc4"
-RACETOKEN_ADDRESS="0xd13a9ae07e25d63855cee6b7a52451db85329649"
-RACEMANAGER_ADDRESS="0xb58fb979bb5773dea518932ca85769c9c4078261"
-
-echo "1. Verifying RatNFT at $RATNFT_ADDRESS..."
-cd race
-npx hardhat verify --network base $RATNFT_ADDRESS "Rat Racer NFT" "RATRACE" "$BLOG_BASE_URL"
+# RaceToken
+echo "Verifying RaceToken..."
+cd race && npx hardhat ignition verify chain-8453 2>&1 | tail -5
 cd ..
-echo ""
 
-echo "2. Verifying RaceToken at $RACETOKEN_ADDRESS..."
-cd race
-npx hardhat verify --network base $RACETOKEN_ADDRESS
+# RatNFT
+echo "\nVerifying RatNFT..."
+cd rat && npx hardhat ignition verify chain-8453 2>&1 | tail -5
 cd ..
-echo ""
 
-echo "3. Verifying RaceManager at $RACEMANAGER_ADDRESS..."
-cd race
-npx hardhat verify --network base $RACEMANAGER_ADDRESS $RATNFT_ADDRESS
-cd ..
-echo ""
-
-echo "=========================================="
-echo "✅ All Contracts Verified!"
-echo "=========================================="
-echo ""
-echo "View on Basescan:"
-echo "RatNFT:       https://basescan.org/address/$RATNFT_ADDRESS#code"
-echo "RaceToken:    https://basescan.org/address/$RACETOKEN_ADDRESS#code"
-echo "RaceManager:  https://basescan.org/address/$RACEMANAGER_ADDRESS#code"
-
+echo "\n========================================="
+echo "Verification complete!"
+echo "=========================================\n"
+echo "Deployed Contracts:"
+echo "RatNFT:       0x456ff59525a02cc4917a93701E12F6D7da79552E"
+echo "RaceToken:    0x909cd2621513aD132ff33007EbaE88D727C5c0d4"
+echo "RaceManager:  0xDA24fF53296c1E5E81fc86b9Fb7deb82e9701E65"

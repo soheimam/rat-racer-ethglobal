@@ -25,24 +25,37 @@ export interface Rat {
 }
 
 export interface RaceEntry {
-    ratId: string;
-    owner: string;
+    ratId?: string; // MongoDB rat ID (legacy)
+    ratTokenId?: number; // On-chain token ID
+    address?: string; // Wallet address (from contract)
+    owner?: string; // Wallet address (legacy)
     enteredAt: string;
     position?: number; // finishing position (set after race completes)
 }
 
 export interface Race {
     _id?: string; // MongoDB ID
-    id: string;
+    id: string; // Unique generated ID
+    raceId?: number; // On-chain race ID from contract
+    creator?: string; // Wallet address of race creator
+    trackId?: number; // Track ID (1, 2, etc.)
+    entryToken?: string; // ERC20 token address for entry fee
     title: string;
     description: string;
-    status: "waiting" | "full" | "running" | "completed";
+    status: "waiting" | "pending" | "full" | "running" | "in_progress" | "completed" | "cancelled";
     entryFee: string; // in ETH or token amount
     prizePool: string;
-    maxParticipants: 6;
+    maxParticipants: number;
     participants: RaceEntry[];
     startedAt?: string;
     completedAt?: string;
+    txHash?: string; // Creation transaction hash
+    startTx?: string; // Start transaction hash
+    settlementTx?: string; // Settlement transaction hash
+    settled?: boolean; // Whether prizes have been distributed
+    onChainWinners?: string[]; // Token IDs from contract
+    onChainPrizes?: string[]; // Prize amounts from contract
+    startedBy?: string; // Who started the race
     winner?: {
         ratId: string;
         owner: string;

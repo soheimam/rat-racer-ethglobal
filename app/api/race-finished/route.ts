@@ -39,6 +39,11 @@ export async function POST(request: NextRequest) {
     try {
         const payload: WebhookPayload = await request.json();
 
+        // Log full payload structure for debugging (we don't know exact webhook format yet)
+        log.info('RAW WEBHOOK PAYLOAD', {
+            fullPayload: JSON.stringify(payload, null, 2)
+        });
+
         logger.logWebhookPayload('RaceFinished', payload);
 
         log.info('Processing race finished event', {

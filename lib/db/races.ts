@@ -4,9 +4,48 @@ import { Race, RaceEntry } from './types';
 
 export class RacesService {
     /**
-     * Create a new race
+     * Create a new race (from contract webhook)
      */
     static async createRace(data: {
+        raceId: number;
+        creator: string;
+        trackId: number;
+        entryToken: string;
+        entryFee: string;
+        status: string;
+        participants: any[];
+        maxParticipants: number;
+        prizePool: string;
+        txHash: string;
+    }): Promise<Race> {
+        const db = await getDb();
+
+        const race: Race = {
+            id: generateId('race'),
+            raceId: data.raceId,
+            creator: data.creator,
+            trackId: data.trackId,
+            entryToken: data.entryToken,
+            title: `Race #${data.raceId}`,
+            description: `Track ${data.trackId}`,
+            status: data.status as Race['status'],
+            entryFee: data.entryFee,
+            prizePool: data.prizePool,
+            maxParticipants: data.maxParticipants,
+            participants: data.participants,
+            txHash: data.txHash,
+            createdAt: new Date().toISOString(),
+        };
+
+        await db.collection<Race>('races').insertOne(race as any);
+
+        return race;
+    }
+
+    /**
+     * Create a new race (manual/UI version)
+     */
+    static async createRaceManual(data: {
         title: string;
         description: string;
         entryFee: string;
@@ -25,9 +64,60 @@ export class RacesService {
             createdAt: new Date().toISOString(),
         };
 
-        await db.collection('races').insertOne(race as any);
+        await db.collection<Race>('races').insertOne(race as any);
 
         return race;
+    }
+
+    /**
+     * Add a participant to a race
+     */
+    static async addParticipant(
+        raceId: number,
+        participant: {
+            address: string;
+            ratTokenId: number;
+            enteredAt: string;
+        }
+    ): Promise<Race> {
+        const db = await getDb();
+
+        const result = await db.collection<Race>('races').findOneAndUpdate(
+            { raceId },
+            {
+                $push: {
+                    participants: participant as any
+                } as any
+            },
+            { returnDocument: 'after' }
+        );
+
+        if (!result) {
+            throw new Error(`Race ${raceId} not found`);
+        }
+
+        return result as unknown as Race;
+    }
+
+    /**
+     * Update race status
+     */
+    static async updateRaceStatus(raceId: number, status: string): Promise<Race> {
+        const db = await getDb();
+
+        const result = await db.collection<Race>('races').findOneAndUpdate(
+            { raceId },
+            {
+                $set: { status: status as Race['status'] }
+            },
+            { returnDocument: 'after' }
+        );
+
+        if (!result) {
+            throw new Error(`Race ${raceId} not found`);
+        }
+
+        return result as unknown as Race;
     }
 
     /**

@@ -26,6 +26,7 @@ interface WebhookPayload {
         args: {
             to: string;
             tokenId: string;
+            imageIndex: string; // 0=white, 1=brown, 2=pink
         };
     };
     transaction: {
@@ -46,12 +47,18 @@ export async function POST(request: NextRequest) {
     try {
         const payload: WebhookPayload = await request.json();
 
+        // Log full payload structure for debugging (we don't know exact webhook format yet)
+        log.info('RAW WEBHOOK PAYLOAD', {
+            fullPayload: JSON.stringify(payload, null, 2)
+        });
+
         logger.logWebhookPayload('RatMinted', payload);
 
         log.info('Processing rat mint event', {
             event: payload.event.name,
             tokenId: payload.event.args.tokenId,
             owner: payload.event.args.to,
+            imageIndex: payload.event.args.imageIndex,
             txHash: payload.transaction.hash,
         });
 
@@ -60,11 +67,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid event type' }, { status: 400 });
         }
 
-        const { to: owner, tokenId } = payload.event.args;
+        const { to: owner, tokenId, imageIndex } = payload.event.args;
         const ownerAddress = getAddress(owner);
+        const selectedImageIndex = Number(imageIndex); // 0=white, 1=brown, 2=pink
+
+        // Map imageIndex to color name  
+        const imageNames = ['white', 'brown', 'pink'];
+        const selectedImage = imageNames[selectedImageIndex];
 
         // Generate random metadata
-        const metadata: RatMetadata = generateRatMetadata(Number(tokenId), ownerAddress);
+        const metadata: RatMetadata = generateRatMetadata(Number(tokenId), ownerAddress, selectedImage);
         const rarityScore = calculateRarityScore(metadata);
 
         log.info('Generated rat metadata', {

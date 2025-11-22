@@ -24,7 +24,7 @@ describe("RaceManager - Complete Tests", function () {
 
         const racers = [racer1, racer2, racer3, racer4, racer5, racer6];
         for (let i = 0; i < racers.length; i++) {
-            await ratNFT.write.mint([racers[i].account.address]);
+            await ratNFT.write.mint([racers[i].account.address, i % 3]); // imageIndex: 0=white, 1=brown, 2=pink
         }
 
         const entryFee = parseEther("100");
@@ -137,7 +137,7 @@ describe("RaceManager - Complete Tests", function () {
                 account: creator.account,
             });
 
-            await raceManager.write.enterRace([0n, 0n], { account: racer1.account });
+            await raceManager.write.enterRace([0n, 1n], { account: racer1.account });
 
             const entries = await raceManager.read.getRaceEntries([0n]);
             expect(entries).to.have.lengthOf(1);
@@ -154,10 +154,10 @@ describe("RaceManager - Complete Tests", function () {
                 account: creator.account,
             });
 
-            await raceManager.write.enterRace([0n, 0n], { account: racer1.account });
+            await raceManager.write.enterRace([0n, 1n], { account: racer1.account });
 
             await expect(
-                raceManager.write.enterRace([1n, 0n], { account: racer1.account })
+                raceManager.write.enterRace([1n, 1n], { account: racer1.account })
             ).to.be.rejectedWith("Rat already in active race");
         });
 
@@ -170,7 +170,7 @@ describe("RaceManager - Complete Tests", function () {
             });
 
             for (let i = 0; i < 6; i++) {
-                await raceManager.write.enterRace([0n, BigInt(i)], {
+                await raceManager.write.enterRace([0n, BigInt(i + 1)], {
                     account: racers[i].account,
                 });
             }
@@ -190,7 +190,7 @@ describe("RaceManager - Complete Tests", function () {
             });
 
             for (let i = 0; i < 6; i++) {
-                await raceManager.write.enterRace([0n, BigInt(i)], {
+                await raceManager.write.enterRace([0n, BigInt(i + 1)], {
                     account: racers[i].account,
                 });
             }
@@ -226,7 +226,7 @@ describe("RaceManager - Complete Tests", function () {
             });
 
             for (let i = 0; i < 6; i++) {
-                await raceManager.write.enterRace([0n, BigInt(i)], {
+                await raceManager.write.enterRace([0n, BigInt(i + 1)], {
                     account: racers[i].account,
                 });
             }
@@ -239,7 +239,7 @@ describe("RaceManager - Complete Tests", function () {
         it("Should allow anyone to finish race", async function () {
             const { raceManager, other } = await loadFixture(startedRaceFixture);
 
-            const winningOrder = [0n, 1n, 2n, 3n, 4n, 5n];
+            const winningOrder = [1n, 2n, 3n, 4n, 5n, 6n];
             await raceManager.write.finishRace([0n, winningOrder], {
                 account: other.account,
             });
@@ -266,7 +266,7 @@ describe("RaceManager - Complete Tests", function () {
                 racers.slice(0, 3).map((r) => raceToken.read.balanceOf([r.account.address]))
             );
 
-            const winningOrder = [0n, 1n, 2n, 3n, 4n, 5n];
+            const winningOrder = [1n, 2n, 3n, 4n, 5n, 6n];
             await raceManager.write.finishRace([0n, winningOrder], {
                 account: racers[0].account,
             });
@@ -283,14 +283,14 @@ describe("RaceManager - Complete Tests", function () {
         it("Should release rats after race finishes", async function () {
             const { raceManager, racers } = await loadFixture(startedRaceFixture);
 
-            expect(await raceManager.read.isRatRacing([0n])).to.be.true;
+            expect(await raceManager.read.isRatRacing([1n])).to.be.true;
 
-            const winningOrder = [0n, 1n, 2n, 3n, 4n, 5n];
+            const winningOrder = [1n, 2n, 3n, 4n, 5n, 6n];
             await raceManager.write.finishRace([0n, winningOrder], {
                 account: racers[0].account,
             });
 
-            expect(await raceManager.read.isRatRacing([0n])).to.be.false;
+            expect(await raceManager.read.isRatRacing([1n])).to.be.false;
         });
     });
 
@@ -322,8 +322,8 @@ describe("RaceManager - Complete Tests", function () {
                 racer1.account.address,
             ]);
 
-            await raceManager.write.enterRace([0n, 0n], { account: racer1.account });
-            await raceManager.write.enterRace([0n, 1n], { account: racer2.account });
+            await raceManager.write.enterRace([0n, 1n], { account: racer1.account });
+            await raceManager.write.enterRace([0n, 2n], { account: racer2.account });
 
             await raceManager.write.cancelRace([0n], { account: creator.account });
 
@@ -360,10 +360,10 @@ describe("RaceManager - Complete Tests", function () {
                 account: creator.account,
             });
 
-            await raceManager.write.enterRace([0n, 0n], { account: racer1.account });
+            await raceManager.write.enterRace([0n, 1n], { account: racer1.account });
 
             await expect(
-                raceManager.write.enterRace([1n, 0n], { account: racer1.account })
+                raceManager.write.enterRace([1n, 1n], { account: racer1.account })
             ).to.be.rejectedWith("Rat already in active race");
         });
 
@@ -376,26 +376,26 @@ describe("RaceManager - Complete Tests", function () {
             });
 
             for (let i = 0; i < 6; i++) {
-                await raceManager.write.enterRace([0n, BigInt(i)], {
+                await raceManager.write.enterRace([0n, BigInt(i + 1)], {
                     account: racers[i].account,
                 });
             }
 
             await raceManager.write.startRace([0n], { account: racers[0].account });
 
-            const winningOrder = [0n, 1n, 2n, 3n, 4n, 5n];
+            const winningOrder = [1n, 2n, 3n, 4n, 5n, 6n];
             await raceManager.write.finishRace([0n, winningOrder], {
                 account: racers[0].account,
             });
 
-            expect(await raceManager.read.isRatRacing([0n])).to.be.false;
+            expect(await raceManager.read.isRatRacing([1n])).to.be.false;
 
             await raceManager.write.createRace([2, raceToken.address, entryFee], {
                 account: creator.account,
             });
 
-            await raceManager.write.enterRace([1n, 0n], { account: racer1.account });
-            expect(await raceManager.read.isRatRacing([0n])).to.be.true;
+            await raceManager.write.enterRace([1n, 1n], { account: racer1.account });
+            expect(await raceManager.read.isRatRacing([1n])).to.be.true;
         });
     });
 

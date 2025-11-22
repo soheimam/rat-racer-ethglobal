@@ -14,7 +14,11 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
  * https://[your-blob-storage].public.blob.vercel-storage.com/rats/metadata/
  */
 const RatNFTModule = buildModule("RatNFTModule", (m) => {
-  const ratNFT = m.contract("RatNFT");
+  const name = m.getParameter("name", "Street Racer Rat");
+  const symbol = m.getParameter("symbol", "RAT");
+  const baseTokenURI = m.getParameter("baseTokenURI", "https://klucbriwtfivi0tj.public.blob.vercel-storage.com/");
+
+  const ratNFT = m.contract("RatNFT", [name, symbol, baseTokenURI]);
 
   return { ratNFT };
 });

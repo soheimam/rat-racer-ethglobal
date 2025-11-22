@@ -56,13 +56,13 @@ export async function seedDatabase() {
     console.log(`✅ Created ${rats.length} test rats`);
 
     // Create test races
-    const race1 = await RacesService.createRace({
+    const race1 = await RacesService.createRaceManual({
         title: "Downtown Dash",
         description: "Race through the neon streets",
         entryFee: "0.01",
     });
 
-    const race2 = await RacesService.createRace({
+    const race2 = await RacesService.createRaceManual({
         title: "Neon Night Run",
         description: "Nighttime city racing",
         entryFee: "0.01",
@@ -78,7 +78,7 @@ export async function seedDatabase() {
     console.log('✅ Added 4 rats to race 1 (waiting for 2 more)');
 
     // Create and complete a past race
-    const completedRace = await RacesService.createRace({
+    const completedRace = await RacesService.createRaceManual({
         title: "Historic Street Championship",
         description: "Already completed race",
         entryFee: "0.01",
