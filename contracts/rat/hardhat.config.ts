@@ -1,9 +1,10 @@
 import "@nomicfoundation/hardhat-toolbox-viem";
+import "@nomicfoundation/hardhat-verify";
 import * as dotenv from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
 
-// Load environment variables from parent directory
-dotenv.config({ path: "../.env" });
+// Load environment variables from project root
+dotenv.config({ path: "../../.env" });
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -21,7 +22,9 @@ const config: HardhatUserConfig = {
     },
     base: {
       url: process.env.RPC_ENDPOINT || "https://mainnet.base.org",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      accounts: process.env.PRIVATE_KEY
+        ? [process.env.PRIVATE_KEY.startsWith('0x') ? process.env.PRIVATE_KEY : `0x${process.env.PRIVATE_KEY}`]
+        : [],
       chainId: 8453,
     },
     baseSepolia: {
@@ -31,28 +34,7 @@ const config: HardhatUserConfig = {
     },
   },
   etherscan: {
-    apiKey: {
-      base: process.env.BASESCAN_API_KEY || "",
-      baseSepolia: process.env.BASESCAN_API_KEY || "",
-    },
-    customChains: [
-      {
-        network: "base",
-        chainId: 8453,
-        urls: {
-          apiURL: "https://api.basescan.org/api",
-          browserURL: "https://basescan.org",
-        },
-      },
-      {
-        network: "baseSepolia",
-        chainId: 84532,
-        urls: {
-          apiURL: "https://api-sepolia.basescan.org/api",
-          browserURL: "https://sepolia.basescan.org",
-        },
-      },
-    ],
+    apiKey: process.env.BASESCAN_API_KEY || "",
   },
 };
 

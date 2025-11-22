@@ -37,6 +37,7 @@ export async function seedDatabase() {
     for (let i = 0; i < ratNames.length; i++) {
         const owner = i < 3 ? wallet1 : i < 6 ? wallet2 : wallet3;
         const rat = await RatsService.createRat(owner, {
+            tokenId: i + 1000,
             name: ratNames[i],
             modelIndex: (i % 6) + 1,
             textureType: ["baseColor", "normal", "metallicRoughness"][i % 3] as any,

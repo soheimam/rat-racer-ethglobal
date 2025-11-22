@@ -48,6 +48,7 @@ async function createIndexes(database: Db) {
     try {
         // Rats collection indexes
         await database.collection('rats').createIndex({ id: 1 }, { unique: true });
+        await database.collection('rats').createIndex({ tokenId: 1 }, { unique: true });
         await database.collection('rats').createIndex({ owner: 1 });
 
         // Races collection indexes

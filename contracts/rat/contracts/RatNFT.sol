@@ -25,8 +25,13 @@ contract RatNFT is ERC721Enumerable, Ownable {
     /// @notice Emitted when base URI is updated
     event BaseURIUpdated(string newBaseURI);
 
-    constructor() ERC721("Street Racer Rat", "RAT") Ownable(msg.sender) {
-        _nextTokenId = 1; // Start at token ID 1
+    constructor(
+        string memory name,
+        string memory symbol,
+        string memory baseTokenURI
+    ) ERC721(name, symbol) Ownable(msg.sender) {
+        _nextTokenId = 1;
+        _baseTokenURI = baseTokenURI;
     }
 
     /**
@@ -43,6 +48,22 @@ contract RatNFT is ERC721Enumerable, Ownable {
      * 6. tokenURI(tokenId) returns the Blob Storage URL
      */
     function mint(address to) external returns (uint256) {
+        require(to != address(0), "Cannot mint to zero address");
+
+        uint256 tokenId = _nextTokenId++;
+        _safeMint(to, tokenId);
+
+        emit RatMinted(to, tokenId);
+
+        return tokenId;
+    }
+
+    /**
+     * @notice Owner mint a single rat to a specific address (for testing)
+     * @param to Address to mint the rat to
+     * @return tokenId The ID of the minted rat
+     */
+    function ownerMint(address to) external onlyOwner returns (uint256) {
         require(to != address(0), "Cannot mint to zero address");
 
         uint256 tokenId = _nextTokenId++;

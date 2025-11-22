@@ -2,7 +2,8 @@
 
 export interface Rat {
     _id?: string; // MongoDB ID
-    id: string; // Unique rat ID
+    id: string; // Unique rat ID (generated)
+    tokenId: number; // NFT token ID from contract
     name: string;
     owner: string; // wallet address
     modelIndex: number; // 1-6 for which model to use

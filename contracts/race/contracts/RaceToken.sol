@@ -9,7 +9,10 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
  * @dev For testing - allows anyone to mint tokens
  */
 contract RaceToken is ERC20 {
-    constructor() ERC20("Race Token", "RACE") {}
+    constructor() ERC20("Race Token", "RACE") {
+        // Mint 10,000 RACE tokens to deployer
+        _mint(msg.sender, 10000 * 10 ** decimals());
+    }
 
     /**
      * @notice Mint tokens for testing

@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
 
         // Store in MongoDB
         const rat = await RatsService.createRat(ownerAddress, {
+            tokenId: Number(tokenId),
             name: metadata.name,
             modelIndex: metadata.properties.modelIndex,
             textureType: 'baseColor',

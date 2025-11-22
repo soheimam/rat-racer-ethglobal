@@ -24,11 +24,11 @@ contract RaceManager is ReentrancyGuard {
 
     // Race states
     enum RaceStatus {
-        Active,      // Accepting entries
-        Full,        // All spots filled, can be started
-        Started,     // Race in progress
-        Finished,    // Race completed
-        Cancelled    // Race cancelled, refunds issued
+        Active, // Accepting entries
+        Full, // All spots filled, can be started
+        Started, // Race in progress
+        Finished, // Race completed
+        Cancelled // Race cancelled, refunds issued
     }
 
     // Race structure
@@ -61,6 +61,9 @@ contract RaceManager is ReentrancyGuard {
     mapping(uint256 => mapping(uint256 => bool)) public ratInRace; // raceId => ratTokenId => inRace
     mapping(uint256 => bool) public ratIsRacing; // ratTokenId => is currently in an active race
 
+    // Admin address
+    address public admin;
+
     // Events
     event RaceCreated(
         uint256 indexed raceId,
@@ -82,11 +85,26 @@ contract RaceManager is ReentrancyGuard {
         uint256[] prizes
     );
     event RaceCancelled(uint256 indexed raceId, address indexed cancelledBy);
-    event PrizeClaimed(uint256 indexed raceId, address indexed racer, uint256 amount);
+    event PrizeClaimed(
+        uint256 indexed raceId,
+        address indexed racer,
+        uint256 amount
+    );
 
     constructor(address ratNFT_) {
         require(ratNFT_ != address(0), "Invalid rat NFT address");
         ratNFT = IERC721(ratNFT_);
+        admin = msg.sender;
+    }
+
+    /**
+     * @notice Set admin address
+     * @param newAdmin New admin address
+     */
+    function setAdmin(address newAdmin) external {
+        require(msg.sender == admin, "Only admin");
+        require(newAdmin != address(0), "Invalid address");
+        admin = newAdmin;
     }
 
     /**
@@ -129,7 +147,10 @@ contract RaceManager is ReentrancyGuard {
      * @param raceId Race to enter
      * @param ratTokenId Rat NFT token ID
      */
-    function enterRace(uint256 raceId, uint256 ratTokenId) external nonReentrant {
+    function enterRace(
+        uint256 raceId,
+        uint256 ratTokenId
+    ) external nonReentrant {
         Race storage race = races[raceId];
 
         require(race.createdAt > 0, "Race does not exist");
@@ -138,18 +159,27 @@ contract RaceManager is ReentrancyGuard {
         require(!hasEntered[raceId][msg.sender], "Already entered this race");
         require(!ratInRace[raceId][ratTokenId], "Rat already in this race");
         require(!ratIsRacing[ratTokenId], "Rat already in active race");
-        require(ratNFT.ownerOf(ratTokenId) == msg.sender, "Must own the rat NFT");
+        require(
+            ratNFT.ownerOf(ratTokenId) == msg.sender,
+            "Must own the rat NFT"
+        );
 
         // Transfer entry fee
-        race.entryToken.safeTransferFrom(msg.sender, address(this), race.entryFee);
+        race.entryToken.safeTransferFrom(
+            msg.sender,
+            address(this),
+            race.entryFee
+        );
 
         // Add entry
-        raceEntries[raceId].push(RacerEntry({
-            racer: msg.sender,
-            ratTokenId: ratTokenId,
-            enteredAt: block.timestamp,
-            position: 0
-        }));
+        raceEntries[raceId].push(
+            RacerEntry({
+                racer: msg.sender,
+                ratTokenId: ratTokenId,
+                enteredAt: block.timestamp,
+                position: 0
+            })
+        );
 
         hasEntered[raceId][msg.sender] = true;
         ratInRace[raceId][ratTokenId] = true;
@@ -162,6 +192,55 @@ contract RaceManager is ReentrancyGuard {
         }
 
         emit RacerEntered(raceId, msg.sender, ratTokenId);
+    }
+
+    /**
+     * @notice Owner can enter any rat into a race for testing (bypasses entry fee)
+     * @param raceId Race to enter
+     * @param racer Address of the racer
+     * @param ratTokenId Rat NFT token ID
+     */
+    function ownerEnterRace(
+        uint256 raceId,
+        address racer,
+        uint256 ratTokenId
+    ) external nonReentrant {
+        require(msg.sender == admin, "Only admin");
+
+        Race storage race = races[raceId];
+
+        require(race.createdAt > 0, "Race does not exist");
+        require(race.status == RaceStatus.Active, "Race not accepting entries");
+        require(raceEntries[raceId].length < MAX_RACERS, "Race is full");
+        require(!hasEntered[raceId][racer], "Already entered this race");
+        require(!ratInRace[raceId][ratTokenId], "Rat already in this race");
+        require(!ratIsRacing[ratTokenId], "Rat already in active race");
+        require(
+            ratNFT.ownerOf(ratTokenId) == racer,
+            "Racer must own the rat NFT"
+        );
+
+        // Add entry (no entry fee charged)
+        raceEntries[raceId].push(
+            RacerEntry({
+                racer: racer,
+                ratTokenId: ratTokenId,
+                enteredAt: block.timestamp,
+                position: 0
+            })
+        );
+
+        hasEntered[raceId][racer] = true;
+        ratInRace[raceId][ratTokenId] = true;
+        ratIsRacing[ratTokenId] = true;
+        // Note: prizePool not increased since no entry fee paid
+
+        // Update status if full
+        if (raceEntries[raceId].length == MAX_RACERS) {
+            race.status = RaceStatus.Full;
+        }
+
+        emit RacerEntered(raceId, racer, ratTokenId);
     }
 
     /**
@@ -216,11 +295,17 @@ contract RaceManager is ReentrancyGuard {
      * @param winningRatTokenIds Array of rat token IDs in finishing order (1st, 2nd, 3rd, etc.)
      * @dev Can be called by anyone with the race results - trustless since results are verifiable
      */
-    function finishRace(uint256 raceId, uint256[] calldata winningRatTokenIds) external nonReentrant {
+    function finishRace(
+        uint256 raceId,
+        uint256[] calldata winningRatTokenIds
+    ) external nonReentrant {
         Race storage race = races[raceId];
 
         require(race.status == RaceStatus.Started, "Race not started");
-        require(winningRatTokenIds.length == MAX_RACERS, "Must provide all positions");
+        require(
+            winningRatTokenIds.length == MAX_RACERS,
+            "Must provide all positions"
+        );
 
         // Verify all rats are valid entries
         RacerEntry[] storage entries = raceEntries[raceId];
@@ -270,9 +355,10 @@ contract RaceManager is ReentrancyGuard {
      */
     function _distributePrizes(uint256 raceId) private {
         Race storage race = races[raceId];
-        
+
         // Creator fee (10%)
-        uint256 creatorFee = (race.prizePool * CREATOR_FEE_PERCENT) / PERCENT_DENOMINATOR;
+        uint256 creatorFee = (race.prizePool * CREATOR_FEE_PERCENT) /
+            PERCENT_DENOMINATOR;
         race.entryToken.safeTransfer(race.creator, creatorFee);
 
         // Remaining prize pool (90%)
@@ -288,7 +374,8 @@ contract RaceManager is ReentrancyGuard {
         RacerEntry[] storage entries = raceEntries[raceId];
         for (uint256 i = 0; i < entries.length; i++) {
             if (entries[i].position > 0 && entries[i].position <= 3) {
-                uint256 prize = (remainingPool * prizeShares[entries[i].position - 1]) / 100;
+                uint256 prize = (remainingPool *
+                    prizeShares[entries[i].position - 1]) / 100;
                 if (prize > 0) {
                     race.entryToken.safeTransfer(entries[i].racer, prize);
                     emit PrizeClaimed(raceId, entries[i].racer, prize);
@@ -302,9 +389,13 @@ contract RaceManager is ReentrancyGuard {
      * @param raceId Race ID
      * @param position Position (1-6)
      */
-    function _calculatePrize(uint256 raceId, uint8 position) private view returns (uint256) {
+    function _calculatePrize(
+        uint256 raceId,
+        uint8 position
+    ) private view returns (uint256) {
         Race storage race = races[raceId];
-        uint256 remainingPool = (race.prizePool * (PERCENT_DENOMINATOR - CREATOR_FEE_PERCENT)) / PERCENT_DENOMINATOR;
+        uint256 remainingPool = (race.prizePool *
+            (PERCENT_DENOMINATOR - CREATOR_FEE_PERCENT)) / PERCENT_DENOMINATOR;
 
         if (position == 1) return (remainingPool * 50) / 100;
         if (position == 2) return (remainingPool * 30) / 100;
@@ -324,7 +415,9 @@ contract RaceManager is ReentrancyGuard {
      * @notice Get race entries
      * @param raceId Race ID
      */
-    function getRaceEntries(uint256 raceId) external view returns (RacerEntry[] memory) {
+    function getRaceEntries(
+        uint256 raceId
+    ) external view returns (RacerEntry[] memory) {
         return raceEntries[raceId];
     }
 
@@ -340,7 +433,10 @@ contract RaceManager is ReentrancyGuard {
      * @param raceId Race ID
      * @param racer Racer address
      */
-    function hasRacerEntered(uint256 raceId, address racer) external view returns (bool) {
+    function hasRacerEntered(
+        uint256 raceId,
+        address racer
+    ) external view returns (bool) {
         return hasEntered[raceId][racer];
     }
 
