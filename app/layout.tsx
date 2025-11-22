@@ -1,7 +1,7 @@
+import { METADATA } from "@/lib/utils";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { METADATA } from "@/lib/utils";
 import { Providers } from "./provider";
 
 const geistSans = Geist({
@@ -16,13 +16,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: METADATA.name,
-    openGraph: {
-      title: METADATA.name,
-      description: METADATA.description,
-      images: [METADATA.bannerImageUrl],
-      url: METADATA.homeUrl,
-      siteName: METADATA.name
-    },
+  openGraph: {
+    title: METADATA.name,
+    description: METADATA.description,
+    images: [METADATA.bannerImageUrl],
+    url: METADATA.homeUrl,
+    siteName: METADATA.name
+  },
 };
 
 export default function RootLayout({
@@ -31,9 +31,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="bg-black">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black text-white min-h-screen`}
       >
         <Providers>{children}</Providers>
       </body>

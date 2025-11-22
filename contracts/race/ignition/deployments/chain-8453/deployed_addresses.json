@@ -1,4 +1,7 @@
 {
   "RaceTokenModule#RaceToken": "0x909cd2621513aD132ff33007EbaE88D727C5c0d4",
-  "RaceManagerModule#RaceManager": "0xDA24fF53296c1E5E81fc86b9Fb7deb82e9701E65"
+  "RaceManagerModule#RaceManager": "0xDA24fF53296c1E5E81fc86b9Fb7deb82e9701E65",
+  "DeployAllModule#RaceToken": "0xb5D7712b80cf17ADFFbd3338d31f3A2C2a1f2Bb0",
+  "DeployAllModule#RatNFT": "0xE572c5216d748a744e9F4288058D9b6144812684",
+  "DeployAllModule#RaceManager": "0xd48fA1fddccD9c8Ba8f083CB0C752c109b15612b"
 }

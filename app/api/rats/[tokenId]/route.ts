@@ -9,10 +9,11 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
     req: NextRequest,
-    { params }: { params: { tokenId: string } }
+    { params }: { params: Promise<{ tokenId: string }> }
 ) {
     try {
-        const tokenId = parseInt(params.tokenId);
+        const { tokenId: tokenIdParam } = await params;
+        const tokenId = parseInt(tokenIdParam);
 
         if (isNaN(tokenId)) {
             return NextResponse.json(

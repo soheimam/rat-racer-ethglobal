@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
@@ -13,6 +14,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract RatNFT is ERC721Enumerable, Ownable {
     uint256 private _nextTokenId;
     string private _baseTokenURI;
+    IERC20 public raceToken;
+    uint256 public mintPrice;
 
     /// @notice Emitted when a rat is minted (webhook listens to this)
     /// @param to Address that received the NFT
@@ -24,13 +27,20 @@ contract RatNFT is ERC721Enumerable, Ownable {
         uint8 imageIndex
     );
 
+    /// @notice Emitted when mint price is updated
+    event MintPriceUpdated(uint256 newPrice);
+
     constructor(
         string memory name_,
         string memory symbol_,
-        string memory baseTokenURI_
+        string memory baseTokenURI_,
+        address raceToken_,
+        uint256 initialMintPrice_
     ) ERC721(name_, symbol_) Ownable(msg.sender) {
         _nextTokenId = 1; // Start at 1
         _baseTokenURI = baseTokenURI_;
+        raceToken = IERC20(raceToken_);
+        mintPrice = initialMintPrice_;
     }
 
     /**
@@ -41,15 +51,23 @@ contract RatNFT is ERC721Enumerable, Ownable {
      *
      * Flow:
      * 1. User selects image (white/brown/pink) in UI
-     * 2. Frontend calls mint(address, imageIndex)
-     * 3. Contract mints → emits RatMinted with imageIndex
-     * 4. Webhook catches event → calls /api/rat-mint
-     * 5. API uses imageIndex to set imageUrl (/images/white|brown|pink.png)
-     * 6. API generates random stats/bloodline/name
-     * 7. API uploads metadata.json to Blob Storage
+     * 2. Frontend calls mint(address, imageIndex) with RACE token approval
+     * 3. Contract transfers RACE tokens from user and mints NFT
+     * 4. Contract emits RatMinted with imageIndex
+     * 5. Webhook catches event → calls /api/rat-mint
+     * 6. API uses imageIndex to set imageUrl (/images/white|brown|pink.png)
+     * 7. API generates random stats/bloodline/name
+     * 8. API uploads metadata.json to Blob Storage
      */
     function mint(address to, uint8 imageIndex) external returns (uint256) {
         require(to != address(0), "Cannot mint to zero address");
+        require(mintPrice > 0, "Mint price not set");
+
+        // Transfer RACE tokens from minter to this contract
+        require(
+            raceToken.transferFrom(msg.sender, address(this), mintPrice),
+            "RACE token transfer failed"
+        );
 
         uint256 tokenId = _nextTokenId++;
         _safeMint(to, tokenId);
@@ -120,5 +138,32 @@ contract RatNFT is ERC721Enumerable, Ownable {
      */
     function nextTokenId() external view returns (uint256) {
         return _nextTokenId;
+    }
+
+    /**
+     * @notice Update mint price (onlyOwner)
+     * @param newPrice New mint price in RACE tokens (wei)
+     */
+    function setMintPrice(uint256 newPrice) external onlyOwner {
+        mintPrice = newPrice;
+        emit MintPriceUpdated(newPrice);
+    }
+
+    /**
+     * @notice Get current mint price
+     * @return Current mint price in RACE tokens (wei)
+     */
+    function getMintPrice() external view returns (uint256) {
+        return mintPrice;
+    }
+
+    /**
+     * @notice Withdraw accumulated RACE tokens (onlyOwner)
+     * @param to Address to withdraw to
+     * @param amount Amount to withdraw
+     */
+    function withdrawRaceTokens(address to, uint256 amount) external onlyOwner {
+        require(to != address(0), "Cannot withdraw to zero address");
+        require(raceToken.transfer(to, amount), "Transfer failed");
     }
 }
