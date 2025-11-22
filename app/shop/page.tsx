@@ -103,7 +103,7 @@ export default function ShopPage() {
         ],
         functionName: 'balanceOf',
         args: address && paymentTokenAddress ? [address] : undefined,
-        query: { 
+        query: {
             enabled: !!address && !!paymentTokenAddress,
             refetchInterval: false,
         }

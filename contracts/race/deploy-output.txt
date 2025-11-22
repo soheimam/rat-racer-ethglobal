@@ -1,0 +1,10 @@
+[dotenv@17.2.3] injecting env (12) from ../../.env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[?25l[2K[1G? Confirm deploy to network base (8453)? › (y/N)[2K[1G[2K[1G✔ Confirm deploy to network base (8453)? … yes
+[?25hHardhat Ignition starting for [ DeployAllModule ]...[2K[1G[ DeployAllModule ] reconciliation failed ⛔
+
+The module contains changes to executed futures:
+
+DeployAllModule#RatNFT:
+ - Artifact bytecodes have been changed
+
+Consider modifying your module to remove the inconsistencies with deployed futures.

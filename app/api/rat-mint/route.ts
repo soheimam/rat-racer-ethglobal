@@ -13,6 +13,7 @@ import {
     type RatMetadata
 } from '@/lib/metadata-generator';
 import { RatMintedPayload } from '@/lib/types/webhook';
+import { getRawBody, verifyWebhookSignature } from '@/lib/webhook-verify';
 import { put } from '@vercel/blob';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAddress } from 'viem';
@@ -20,6 +21,7 @@ import { getAddress } from 'viem';
 const BLOB_READ_WRITE_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 const BLOB_BASE_URL = process.env.BLOB_BASE_URL;
 const NEXT_PUBLIC_URL = process.env.NEXT_PUBLIC_URL;
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 
 export async function POST(request: NextRequest) {
     const startTime = Date.now();
@@ -28,7 +30,37 @@ export async function POST(request: NextRequest) {
     const log = logger.child({ requestId, route: '/api/rat-mint' });
 
     try {
-        const payload: RatMintedPayload = await request.json();
+        // Get raw body for signature verification
+        const rawBody = await getRawBody(request);
+
+        // Get signature header
+        const signature = request.headers.get('x-hook0-signature');
+
+        if (!signature) {
+            log.error('Missing X-Hook0-Signature header');
+            return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
+        }
+
+        if (!WEBHOOK_SECRET) {
+            log.error('WEBHOOK_SECRET not configured');
+            return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+        }
+
+        // Verify webhook signature
+        const headersObj: Record<string, string> = {};
+        request.headers.forEach((value, key) => {
+            headersObj[key] = value;
+        });
+
+        const isValid = verifyWebhookSignature(rawBody, signature, WEBHOOK_SECRET, headersObj);
+
+        if (!isValid) {
+            log.error('Invalid webhook signature - rejected');
+            return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+        }
+
+        // Parse JSON only after verification
+        const payload: RatMintedPayload = JSON.parse(rawBody);
 
         // Log full payload structure for debugging (we don't know exact webhook format yet)
         log.info('RAW WEBHOOK PAYLOAD', {

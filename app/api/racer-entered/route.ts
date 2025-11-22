@@ -7,26 +7,12 @@
 
 import { RacesService } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { RacerEnteredPayload } from '@/lib/types/webhook';
+import { getRawBody, verifyWebhookSignature } from '@/lib/webhook-verify';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAddress } from 'viem';
 
-interface WebhookPayload {
-    event: {
-        name: string;
-        args: {
-            raceId: string;
-            racer: string;
-            ratTokenId: string;
-        };
-    };
-    transaction: {
-        hash: string;
-        blockNumber: string;
-    };
-    network: {
-        chainId: number;
-    };
-}
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 
 export async function POST(req: NextRequest) {
     const startTime = Date.now();
@@ -35,7 +21,37 @@ export async function POST(req: NextRequest) {
     const log = logger.child({ requestId, route: '/api/racer-entered' });
 
     try {
-        const payload: WebhookPayload = await req.json();
+        // Get raw body for signature verification
+        const rawBody = await getRawBody(req);
+
+        // Get signature header
+        const signature = req.headers.get('x-hook0-signature');
+
+        if (!signature) {
+            log.error('Missing X-Hook0-Signature header');
+            return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
+        }
+
+        if (!WEBHOOK_SECRET) {
+            log.error('WEBHOOK_SECRET not configured');
+            return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+        }
+
+        // Verify webhook signature
+        const headersObj: Record<string, string> = {};
+        req.headers.forEach((value, key) => {
+            headersObj[key] = value;
+        });
+
+        const isValid = verifyWebhookSignature(rawBody, signature, WEBHOOK_SECRET, headersObj);
+
+        if (!isValid) {
+            log.error('Invalid webhook signature - rejected');
+            return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+        }
+
+        // Parse JSON only after verification
+        const payload: RacerEnteredPayload = JSON.parse(rawBody);
 
         // Log full payload structure for debugging (we don't know exact webhook format yet)
         log.info('RAW WEBHOOK PAYLOAD', {
@@ -44,18 +60,18 @@ export async function POST(req: NextRequest) {
 
         log.info('Received webhook payload', { payload });
 
-        if (payload.event.name !== 'RacerEntered') {
-            log.warn('Invalid event type', { event: payload.event.name });
+        if (payload.event_name !== 'RacerEntered') {
+            log.warn('Invalid event type', { event: payload.event_name });
             return NextResponse.json({ error: 'Invalid event type' }, { status: 400 });
         }
 
-        const { raceId, racer, ratTokenId } = payload.event.args;
+        const { raceId, racer, ratTokenId } = payload.parameters;
 
         log.info('Processing racer entered event', {
             raceId,
             racer,
             ratTokenId,
-            txHash: payload.transaction.hash,
+            txHash: payload.transaction_hash,
         });
 
         // Add participant to race in MongoDB

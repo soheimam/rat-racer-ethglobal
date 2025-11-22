@@ -1,7 +1,23 @@
 /**
- * Standard Webhook Payload Structure
+ * Webhook Payload Types
  * 
- * This is the format sent by the webhook service for all contract events
+ * Based on ACTUAL webhook payload structure received from webhook service.
+ * Uses snake_case to match the actual JSON format.
+ * 
+ * Example payload structure:
+ * {
+ *   "block_number": 38528761,
+ *   "contract_address": "0x...",
+ *   "event_name": "RatMinted",
+ *   "event_signature": "RatMinted(address,uint256,uint8)",
+ *   "log_index": 373,
+ *   "network": "base-mainnet",
+ *   "parameters": { ... },
+ *   "timestamp": "2025-11-22T21:27:50Z",
+ *   "transaction_from": "0x...",
+ *   "transaction_hash": "0x...",
+ *   "transaction_to": "0x..."
+ * }
  */
 
 export interface BaseWebhookPayload {
@@ -79,4 +95,3 @@ export type WebhookPayload =
     | RaceStartedPayload
     | RaceFinishedPayload
     | RaceCancelledPayload;
-

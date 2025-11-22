@@ -1,20 +1,22 @@
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import hre from "hardhat";
-import { getAddress, parseEther } from "viem";
+import { getAddress, parseEther, parseUnits } from "viem";
 
 describe("RaceManager - Complete Tests", function () {
     async function deployContractsFixture() {
         const [owner, creator, racer1, racer2, racer3, racer4, racer5, racer6, other] =
             await hre.viem.getWalletClients();
 
+        const raceToken = await hre.viem.deployContract("RaceToken", []);
+
         const ratNFT = await hre.viem.deployContract("RatNFT", [
             "Street Racer Rat",
             "RAT",
-            "https://test.com/rats/"
+            "https://test.com/rats/",
+            raceToken.address,
+            parseUnits("100", 18), // 100 RACE per mint
         ]);
-
-        const raceToken = await hre.viem.deployContract("RaceToken", []);
 
         const raceManager = await hre.viem.deployContract("RaceManager", [
             ratNFT.address,
@@ -23,8 +25,20 @@ describe("RaceManager - Complete Tests", function () {
         const publicClient = await hre.viem.getPublicClient();
 
         const racers = [racer1, racer2, racer3, racer4, racer5, racer6];
+        // Mint RACE tokens to racers and approve + mint rats
         for (let i = 0; i < racers.length; i++) {
-            await ratNFT.write.mint([racers[i].account.address, i % 3]); // imageIndex: 0=white, 1=brown, 2=pink
+            // Give racer 1000 RACE tokens
+            await raceToken.write.mint([racers[i].account.address, parseUnits("1000", 18)]);
+
+            // Approve RatNFT to spend 100 RACE
+            await raceToken.write.approve([ratNFT.address, parseUnits("100", 18)], {
+                account: racers[i].account,
+            });
+
+            // Mint rat NFT
+            await ratNFT.write.mint([racers[i].account.address, i % 3], {
+                account: racers[i].account,
+            }); // imageIndex: 0=white, 1=brown, 2=pink
         }
 
         const entryFee = parseEther("100");
