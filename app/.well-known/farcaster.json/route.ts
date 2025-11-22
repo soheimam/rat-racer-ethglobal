@@ -21,7 +21,7 @@ export async function GET() {
         "ogImageUrl": METADATA.bannerImageUrl,
         "canonicalDomain": "https://rat-race-gamma.vercel.app/",
         "noindex": false,
-        "tags": ["base", "baseapp", "miniapp", "demo", "basepay"]
+        "tags": ["base","demo", "basepay"]
       },
       "baseBuilder": {
         "ownerAddress": "0xa41f6558A517e6aC35DeA5A453273Aa4F31CDAcD"
