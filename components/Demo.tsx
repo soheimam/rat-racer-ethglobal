@@ -14,6 +14,7 @@ export default function Demo() {
 
   return (
     <div>
+         <Stylesheet /> 
       <h1>Demo</h1>
       <p>{isConnected ? "Connected" : "Not Connected"}</p>
       <Link href="/my-rats">
@@ -25,7 +26,7 @@ export default function Demo() {
       <Link href="/races">
         <button>Races</button>
       </Link>
-      <Stylesheet />
+     
     </div>
   );
 }
