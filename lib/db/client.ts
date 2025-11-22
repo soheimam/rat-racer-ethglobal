@@ -1,4 +1,4 @@
-import { Db, MongoClient } from 'mongodb';
+import { Db, MongoClient, MongoClientOptions, ServerApiVersion } from 'mongodb';
 
 // MongoDB connection
 let client: MongoClient | null = null;
@@ -9,6 +9,7 @@ const DB_NAME = 'rat-racer';
 
 /**
  * Get MongoDB client (singleton pattern)
+ * Uses MongoDB Stable API v1 as recommended by Atlas
  */
 export async function getMongoClient(): Promise<MongoClient> {
     if (!MONGO_URI) {
@@ -16,14 +17,46 @@ export async function getMongoClient(): Promise<MongoClient> {
     }
 
     if (client) {
-        return client;
+        try {
+            // Ping to check if connection is still alive
+            await client.db('admin').command({ ping: 1 });
+            return client;
+        } catch (error) {
+            console.log('⚠️ Existing connection dead, reconnecting...');
+            client = null;
+        }
     }
 
-    client = new MongoClient(MONGO_URI);
-    await client.connect();
-    console.log('✅ Connected to MongoDB');
+    // MongoDB Atlas recommended options with Stable API
+    const options: MongoClientOptions = {
+        serverApi: {
+            version: ServerApiVersion.v1,
+            strict: true,
+            deprecationErrors: true,
+        },
+        maxPoolSize: 10,
+        minPoolSize: 2,
+        serverSelectionTimeoutMS: 10000,
+        socketTimeoutMS: 45000,
+        family: 4, // Use IPv4, skip trying IPv6
+        retryWrites: true,
+        retryReads: true,
+    };
 
-    return client;
+    try {
+        client = new MongoClient(MONGO_URI, options);
+        await client.connect();
+
+        // Verify connection with ping
+        await client.db('admin').command({ ping: 1 });
+        console.log('✅ Pinged deployment. Successfully connected to MongoDB!');
+
+        return client;
+    } catch (error) {
+        console.error('❌ MongoDB connection failed:', error);
+        client = null;
+        throw new Error(`Failed to connect to MongoDB: ${error instanceof Error ? error.message : String(error)}`);
+    }
 }
 
 /**

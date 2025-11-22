@@ -152,7 +152,8 @@ export function generateRatMetadata(
     const dob = new Date().toISOString();
 
     // Get base URL from environment (for both static images and external links)
-    const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://rat-racer.vercel.app';
+    // Remove trailing slash to prevent double slashes in URLs
+    const baseUrl = (process.env.NEXT_PUBLIC_URL || 'https://rat-racer.vercel.app').replace(/\/$/, '');
 
     // OpenSea-compatible metadata
     const metadata: RatMetadata = {

@@ -14,7 +14,7 @@ async function main() {
 
   console.log("Network:", hre.network.name);
   console.log("PRIVATE_KEY present:", !!process.env.PRIVATE_KEY);
-  console.log("RPC_ENDPOINT:", process.env.RPC_ENDPOINT || "not set");
+  console.log("RPC_ENDPOINT:", process.env.NEXT_PUBLIC_RPC_ENDPOINT || "not set");
 
   const blobBaseUrl = process.env.BLOG_BASE_URL;
   if (!blobBaseUrl) {

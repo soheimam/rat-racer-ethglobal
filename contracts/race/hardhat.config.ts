@@ -21,7 +21,7 @@ const config: HardhatUserConfig = {
       chainId: 31337,
     },
     base: {
-      url: process.env.RPC_ENDPOINT || "https://mainnet.base.org",
+      url: process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://mainnet.base.org",
       accounts: process.env.PRIVATE_KEY
         ? [process.env.PRIVATE_KEY.startsWith('0x') ? process.env.PRIVATE_KEY : `0x${process.env.PRIVATE_KEY}`]
         : [],
