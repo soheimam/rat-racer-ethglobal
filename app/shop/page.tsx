@@ -66,41 +66,94 @@ export default function ShopPage() {
     // Contract addresses from environment variables
     const RAT_NFT_ADDRESS = process.env.NEXT_PUBLIC_RAT_NFT_ADDRESS as `0x${string}`;
 
-    // Read rat configuration for selected rat (payment token + price)
-    const { data: ratConfig } = useReadContract({
+    const RAT_CONFIG_ABI = [
+        {
+            inputs: [{ name: 'imageIndex', type: 'uint8' }],
+            name: 'getRatConfig',
+            outputs: [
+                { name: 'paymentToken', type: 'address' },
+                { name: 'price', type: 'uint256' }
+            ],
+            stateMutability: 'view',
+            type: 'function'
+        }
+    ] as const;
+
+    const TOKEN_ABI = [
+        {
+            inputs: [],
+            name: 'symbol',
+            outputs: [{ name: '', type: 'string' }],
+            stateMutability: 'view',
+            type: 'function'
+        },
+        {
+            inputs: [{ name: 'account', type: 'address' }],
+            name: 'balanceOf',
+            outputs: [{ name: '', type: 'uint256' }],
+            stateMutability: 'view',
+            type: 'function'
+        }
+    ] as const;
+
+    // Read configuration for all 3 rats
+    const { data: rat0Config } = useReadContract({
         address: RAT_NFT_ADDRESS,
-        abi: [
-            {
-                inputs: [{ name: 'imageIndex', type: 'uint8' }],
-                name: 'getRatConfig',
-                outputs: [
-                    { name: 'paymentToken', type: 'address' },
-                    { name: 'price', type: 'uint256' }
-                ],
-                stateMutability: 'view',
-                type: 'function'
-            }
-        ],
+        abi: RAT_CONFIG_ABI,
         functionName: 'getRatConfig',
-        args: selectedRat !== null ? [selectedRat as any] : undefined,
-        query: { enabled: selectedRat !== null }
+        args: [0]
     });
 
-    const paymentTokenAddress = ratConfig?.[0] as `0x${string}` | undefined;
-    const mintPrice = ratConfig?.[1] as bigint | undefined;
+    const { data: rat1Config } = useReadContract({
+        address: RAT_NFT_ADDRESS,
+        abi: RAT_CONFIG_ABI,
+        functionName: 'getRatConfig',
+        args: [1]
+    });
+
+    const { data: rat2Config } = useReadContract({
+        address: RAT_NFT_ADDRESS,
+        abi: RAT_CONFIG_ABI,
+        functionName: 'getRatConfig',
+        args: [2]
+    });
+
+    const ratConfigs = [rat0Config, rat1Config, rat2Config];
+
+    // Get token symbols for all payment tokens
+    const { data: token0Symbol } = useReadContract({
+        address: rat0Config?.[0] as `0x${string}`,
+        abi: TOKEN_ABI,
+        functionName: 'symbol',
+        query: { enabled: !!rat0Config?.[0] }
+    });
+
+    const { data: token1Symbol } = useReadContract({
+        address: rat1Config?.[0] as `0x${string}`,
+        abi: TOKEN_ABI,
+        functionName: 'symbol',
+        query: { enabled: !!rat1Config?.[0] }
+    });
+
+    const { data: token2Symbol } = useReadContract({
+        address: rat2Config?.[0] as `0x${string}`,
+        abi: TOKEN_ABI,
+        functionName: 'symbol',
+        query: { enabled: !!rat2Config?.[0] }
+    });
+
+    const tokenSymbols = [token0Symbol, token1Symbol, token2Symbol];
+
+    // Get selected rat data
+    const selectedRatConfig = selectedRat !== null ? ratConfigs[selectedRat] : undefined;
+    const paymentTokenAddress = selectedRatConfig?.[0] as `0x${string}` | undefined;
+    const mintPrice = selectedRatConfig?.[1] as bigint | undefined;
+    const selectedTokenSymbol = selectedRat !== null ? tokenSymbols[selectedRat] : undefined;
 
     // Read balance of the payment token for selected rat
     const { data: tokenBalance, refetch: refetchBalance } = useReadContract({
         address: paymentTokenAddress,
-        abi: [
-            {
-                inputs: [{ name: 'account', type: 'address' }],
-                name: 'balanceOf',
-                outputs: [{ name: '', type: 'uint256' }],
-                stateMutability: 'view',
-                type: 'function'
-            }
-        ],
+        abi: TOKEN_ABI,
         functionName: 'balanceOf',
         args: address && paymentTokenAddress ? [address] : undefined,
         query: {
@@ -141,7 +194,9 @@ export default function ShopPage() {
                     toast({ title: 'CHECKING STASH', description: 'Verifying RACE tokens...' });
                 },
                 onApproving: () => {
-                    toast({ title: 'APPROVAL NEEDED', description: 'Approve 100 RACE in wallet...' });
+                    const tokenName = selectedTokenSymbol || 'tokens';
+                    const amount = mintPrice ? formatUnits(mintPrice, 18) : '...';
+                    toast({ title: 'APPROVAL NEEDED', description: `Approve ${amount} ${tokenName} in wallet...` });
                 },
                 onApprovalConfirmed: () => {
                     toast({ title: 'APPROVED', description: 'Tokens locked. Entering the ring...' });
@@ -266,12 +321,12 @@ export default function ShopPage() {
                 </div>
 
                 {/* Info Panel */}
-                <div className="mb-12 p-6 bg-gradient-to-r from-red-900/20 to-purple-900/20 border-2 border-red-500/30 relative">
+                <div className="mb-12 p-6 bg-linear-to-r from-red-900/20 to-purple-900/20 border-2 border-red-500/30 relative">
                     <div className="absolute -top-3 left-4 bg-black px-2 text-red-400 text-xs font-mono">ENTRY FEE</div>
                     <div className="flex items-center justify-between">
                         <div>
                             <div className="text-4xl font-black text-yellow-400 mb-1">
-                                {selectedRat !== null && mintPrice ? formatUnits(mintPrice, 18) : '...'} RACE
+                                {selectedRat !== null && mintPrice ? formatUnits(mintPrice, 18) : '...'} {selectedTokenSymbol || 'TOKENS'}
                             </div>
                             <div className="text-sm text-gray-400 font-mono">
                                 {selectedRat !== null ? `// ${RAT_RACERS[selectedRat].name} MINT COST` : '// SELECT A RACER'}
@@ -293,7 +348,7 @@ export default function ShopPage() {
                                         ? 'text-green-400'
                                         : 'text-red-400'
                                         }`}>
-                                        {tokenBalance ? Number(formatUnits(tokenBalance as bigint, 18)).toFixed(0) : '0'} RACE
+                                        {tokenBalance ? Number(formatUnits(tokenBalance as bigint, 18)).toFixed(0) : '0'} {selectedTokenSymbol || 'TOKENS'}
                                     </div>
                                     <div className="text-xs text-gray-500 font-mono mt-1">
                                         {tokenBalance && mintPrice && Number(formatUnits(tokenBalance as bigint, 18)) < Number(formatUnits(mintPrice, 18)) && (
@@ -316,6 +371,9 @@ export default function ShopPage() {
                         {RAT_RACERS.map((rat) => {
                             const isSelected = selectedRat === rat.id;
                             const isHovered = hoveredRat === rat.id;
+                            const config = ratConfigs[rat.id];
+                            const tokenSymbol = tokenSymbols[rat.id];
+                            const price = config?.[1];
 
                             return (
                                 <div
@@ -353,9 +411,20 @@ export default function ShopPage() {
                                             </div>
                                         )}
 
+                                        {/* Price Badge */}
+                                        <div className="absolute top-4 right-4 z-10">
+                                            <div className="bg-yellow-500 text-black px-3 py-2 text-sm font-black border-2 border-yellow-300"
+                                                style={{
+                                                    textShadow: 'none',
+                                                    boxShadow: '0 0 20px rgba(234, 179, 8, 0.5)'
+                                                }}>
+                                                {price ? formatUnits(price, 18) : '...'} {tokenSymbol || 'TOKENS'}
+                                            </div>
+                                        </div>
+
                                         {/* Image */}
                                         <div
-                                            className="relative h-80 bg-gradient-to-b from-gray-900 to-black flex items-center justify-center overflow-hidden"
+                                            className="relative h-80 bg-linear-to-b from-gray-900 to-black flex items-center justify-center overflow-hidden"
                                             style={{
                                                 borderBottom: `2px solid ${rat.color}`
                                             }}
@@ -377,7 +446,7 @@ export default function ShopPage() {
                                         </div>
 
                                         {/* Info */}
-                                        <div className="p-6 bg-gradient-to-b from-gray-900 to-black">
+                                        <div className="p-6 bg-linear-to-b from-gray-900 to-black">
                                             <div className="text-3xl font-black mb-1 tracking-wider" style={{ color: rat.color }}>
                                                 {rat.name}
                                             </div>
@@ -460,7 +529,7 @@ export default function ShopPage() {
                     ) : mintedRat ? (
                         <div className="space-y-6">
                             <div className="flex gap-6">
-                                <div className="w-64 h-64 bg-gradient-to-br from-gray-900 to-black border-4 border-green-500 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
+                                <div className="w-64 h-64 bg-linear-to-br from-gray-900 to-black border-4 border-green-500 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
                                     <img
                                         src={mintedRat.imageUrl}
                                         alt={mintedRat.name}
@@ -496,7 +565,7 @@ export default function ShopPage() {
                                 </div>
                             </div>
 
-                            <div className="bg-gradient-to-r from-gray-900 to-black border-2 border-green-500/30 p-4 rounded">
+                            <div className="bg-linear-to-r from-gray-900 to-black border-2 border-green-500/30 p-4 rounded">
                                 <div className="text-xs text-green-400 font-mono mb-2">[ SPEED DISTRIBUTION // 5 SEGMENTS ]</div>
                                 <div className="grid grid-cols-5 gap-2">
                                     {mintedRat.speeds.map((speed, i) => (
