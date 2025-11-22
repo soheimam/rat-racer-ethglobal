@@ -12,6 +12,7 @@ import {
     generateRatMetadata,
     type RatMetadata
 } from '@/lib/metadata-generator';
+import { RatMintedPayload } from '@/lib/types/webhook';
 import { put } from '@vercel/blob';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAddress } from 'viem';
@@ -20,24 +21,6 @@ const BLOB_READ_WRITE_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 const BLOB_BASE_URL = process.env.BLOB_BASE_URL;
 const NEXT_PUBLIC_URL = process.env.NEXT_PUBLIC_URL;
 
-interface WebhookPayload {
-    event: {
-        name: string;
-        args: {
-            to: string;
-            tokenId: string;
-            imageIndex: string; // 0=white, 1=brown, 2=pink
-        };
-    };
-    transaction: {
-        hash: string;
-        blockNumber: string;
-    };
-    network: {
-        chainId: number;
-    };
-}
-
 export async function POST(request: NextRequest) {
     const startTime = Date.now();
     const requestId = logger.logApiEntry('rat-mint', request);
@@ -45,7 +28,7 @@ export async function POST(request: NextRequest) {
     const log = logger.child({ requestId, route: '/api/rat-mint' });
 
     try {
-        const payload: WebhookPayload = await request.json();
+        const payload: RatMintedPayload = await request.json();
 
         // Log full payload structure for debugging (we don't know exact webhook format yet)
         log.info('RAW WEBHOOK PAYLOAD', {
@@ -55,19 +38,19 @@ export async function POST(request: NextRequest) {
         logger.logWebhookPayload('RatMinted', payload);
 
         log.info('Processing rat mint event', {
-            event: payload.event.name,
-            tokenId: payload.event.args.tokenId,
-            owner: payload.event.args.to,
-            imageIndex: payload.event.args.imageIndex,
-            txHash: payload.transaction.hash,
+            event: payload.event_name,
+            tokenId: payload.parameters.tokenId,
+            owner: payload.parameters.to,
+            imageIndex: payload.parameters.imageIndex,
+            txHash: payload.transaction_hash,
         });
 
-        if (!payload.event || payload.event.name !== 'RatMinted') {
-            log.warn('Invalid event type');
+        if (!payload.event_name || payload.event_name !== 'RatMinted') {
+            log.warn('Invalid event type', { event: payload.event_name });
             return NextResponse.json({ error: 'Invalid event type' }, { status: 400 });
         }
 
-        const { to: owner, tokenId, imageIndex } = payload.event.args;
+        const { to: owner, tokenId, imageIndex } = payload.parameters;
         const ownerAddress = getAddress(owner);
         const selectedImageIndex = Number(imageIndex); // 0=white, 1=brown, 2=pink
 

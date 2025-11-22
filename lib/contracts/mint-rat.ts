@@ -5,12 +5,11 @@
 import { config } from '@/components/providers/WagmiProvider';
 import { readContract, waitForTransactionReceipt, writeContract } from '@wagmi/core';
 
-// Contract addresses from environment variables (NO HARDCODED FALLBACKS)
+// Contract address from environment variable (NO HARDCODED FALLBACKS)
 const RAT_NFT_ADDRESS = process.env.NEXT_PUBLIC_RAT_NFT_ADDRESS as `0x${string}`;
-const RACE_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_RACE_TOKEN_ADDRESS as `0x${string}`;
 
-if (!RAT_NFT_ADDRESS || !RACE_TOKEN_ADDRESS) {
-    throw new Error('Contract addresses must be set in environment variables: NEXT_PUBLIC_RAT_NFT_ADDRESS and NEXT_PUBLIC_RACE_TOKEN_ADDRESS');
+if (!RAT_NFT_ADDRESS) {
+    throw new Error('Contract address must be set in environment variable: NEXT_PUBLIC_RAT_NFT_ADDRESS');
 }
 
 const RAT_NFT_ABI = [
@@ -25,9 +24,12 @@ const RAT_NFT_ABI = [
         type: 'function',
     },
     {
-        inputs: [],
-        name: 'getMintPrice',
-        outputs: [{ name: '', type: 'uint256' }],
+        inputs: [{ name: 'imageIndex', type: 'uint8' }],
+        name: 'getRatConfig',
+        outputs: [
+            { name: 'paymentToken', type: 'address' },
+            { name: 'price', type: 'uint256' }
+        ],
         stateMutability: 'view',
         type: 'function',
     },
@@ -69,21 +71,29 @@ export async function mintRat(
     imageIndex: number,
     progress?: MintProgress
 ): Promise<{ tokenId: bigint; txHash: string }> {
-    if (!RAT_NFT_ADDRESS || !RACE_TOKEN_ADDRESS) {
-        throw new Error('Contract addresses not configured');
+    if (!RAT_NFT_ADDRESS) {
+        throw new Error('Contract address must be set in environment variable: NEXT_PUBLIC_RAT_NFT_ADDRESS');
     }
 
-    // Step 1: Get current mint price from contract
+    // Step 1: Get payment token and price for this rat type
     progress?.onCheckingAllowance?.();
-    const mintPrice = await readContract(config, {
+    const ratConfig = await readContract(config, {
         address: RAT_NFT_ADDRESS,
         abi: RAT_NFT_ABI,
-        functionName: 'getMintPrice',
+        functionName: 'getRatConfig',
+        args: [imageIndex as any],
     });
+
+    const paymentTokenAddress = ratConfig[0] as `0x${string}`;
+    const mintPrice = ratConfig[1] as bigint;
+
+    if (!paymentTokenAddress || paymentTokenAddress === '0x0000000000000000000000000000000000000000') {
+        throw new Error('Payment token not configured for this rat type');
+    }
 
     // Step 2: Check current allowance
     const currentAllowance = await readContract(config, {
-        address: RACE_TOKEN_ADDRESS,
+        address: paymentTokenAddress,
         abi: RACE_TOKEN_ABI,
         functionName: 'allowance',
         args: [userAddress, RAT_NFT_ADDRESS],
@@ -93,7 +103,7 @@ export async function mintRat(
     if (currentAllowance < mintPrice) {
         progress?.onApproving?.();
         const approveHash = await writeContract(config, {
-            address: RACE_TOKEN_ADDRESS,
+            address: paymentTokenAddress,
             abi: RACE_TOKEN_ABI,
             functionName: 'approve',
             args: [RAT_NFT_ADDRESS, mintPrice],

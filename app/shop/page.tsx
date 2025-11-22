@@ -64,12 +64,34 @@ export default function ShopPage() {
     const [hoveredRat, setHoveredRat] = useState<number | null>(null);
 
     // Contract addresses from environment variables
-    const RACE_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_RACE_TOKEN_ADDRESS as `0x${string}`;
     const RAT_NFT_ADDRESS = process.env.NEXT_PUBLIC_RAT_NFT_ADDRESS as `0x${string}`;
 
-    // Read RACE token balance
-    const { data: raceBalance, refetch: refetchBalance } = useReadContract({
-        address: RACE_TOKEN_ADDRESS,
+    // Read rat configuration for selected rat (payment token + price)
+    const { data: ratConfig } = useReadContract({
+        address: RAT_NFT_ADDRESS,
+        abi: [
+            {
+                inputs: [{ name: 'imageIndex', type: 'uint8' }],
+                name: 'getRatConfig',
+                outputs: [
+                    { name: 'paymentToken', type: 'address' },
+                    { name: 'price', type: 'uint256' }
+                ],
+                stateMutability: 'view',
+                type: 'function'
+            }
+        ],
+        functionName: 'getRatConfig',
+        args: selectedRat !== null ? [selectedRat as any] : undefined,
+        query: { enabled: selectedRat !== null }
+    });
+
+    const paymentTokenAddress = ratConfig?.[0] as `0x${string}` | undefined;
+    const mintPrice = ratConfig?.[1] as bigint | undefined;
+
+    // Read balance of the payment token for selected rat
+    const { data: tokenBalance, refetch: refetchBalance } = useReadContract({
+        address: paymentTokenAddress,
         abi: [
             {
                 inputs: [{ name: 'account', type: 'address' }],
@@ -80,26 +102,11 @@ export default function ShopPage() {
             }
         ],
         functionName: 'balanceOf',
-        args: address ? [address] : undefined,
-        query: {
-            enabled: !!address,
-            refetchInterval: false, // Don't auto-refetch
+        args: address && paymentTokenAddress ? [address] : undefined,
+        query: { 
+            enabled: !!address && !!paymentTokenAddress,
+            refetchInterval: false,
         }
-    });
-
-    // Read dynamic mint price from contract
-    const { data: mintPrice } = useReadContract({
-        address: RAT_NFT_ADDRESS,
-        abi: [
-            {
-                inputs: [],
-                name: 'getMintPrice',
-                outputs: [{ name: '', type: 'uint256' }],
-                stateMutability: 'view',
-                type: 'function'
-            }
-        ],
-        functionName: 'getMintPrice',
     });
 
     const handleSelectRat = (ratId: number) => {
@@ -264,26 +271,32 @@ export default function ShopPage() {
                     <div className="flex items-center justify-between">
                         <div>
                             <div className="text-4xl font-black text-yellow-400 mb-1">
-                                {mintPrice ? formatUnits(mintPrice as bigint, 18) : '...'} RACE
+                                {selectedRat !== null && mintPrice ? formatUnits(mintPrice, 18) : '...'} RACE
                             </div>
-                            <div className="text-sm text-gray-400 font-mono">// RANDOM STATS // BLOODLINE UNKNOWN</div>
+                            <div className="text-sm text-gray-400 font-mono">
+                                {selectedRat !== null ? `// ${RAT_RACERS[selectedRat].name} MINT COST` : '// SELECT A RACER'}
+                            </div>
                         </div>
                         <div>
                             {!isConnected ? (
                                 <div className="text-red-400 font-mono text-sm animate-pulse">
                                     [!] WALLET NOT CONNECTED
                                 </div>
+                            ) : selectedRat === null ? (
+                                <div className="text-gray-400 font-mono text-sm">
+                                    [?] SELECT RACER TO SEE BALANCE
+                                </div>
                             ) : (
                                 <div className="text-right">
                                     <div className="text-xs text-gray-500 font-mono mb-1">YOUR BALANCE</div>
-                                    <div className={`text-3xl font-black font-mono ${raceBalance && mintPrice && Number(formatUnits(raceBalance as bigint, 18)) >= Number(formatUnits(mintPrice as bigint, 18))
+                                    <div className={`text-3xl font-black font-mono ${tokenBalance && mintPrice && Number(formatUnits(tokenBalance as bigint, 18)) >= Number(formatUnits(mintPrice, 18))
                                         ? 'text-green-400'
                                         : 'text-red-400'
                                         }`}>
-                                        {raceBalance ? Number(formatUnits(raceBalance as bigint, 18)).toFixed(0) : '0'} RACE
+                                        {tokenBalance ? Number(formatUnits(tokenBalance as bigint, 18)).toFixed(0) : '0'} RACE
                                     </div>
                                     <div className="text-xs text-gray-500 font-mono mt-1">
-                                        {raceBalance && mintPrice && Number(formatUnits(raceBalance as bigint, 18)) < Number(formatUnits(mintPrice as bigint, 18)) && (
+                                        {tokenBalance && mintPrice && Number(formatUnits(tokenBalance as bigint, 18)) < Number(formatUnits(mintPrice, 18)) && (
                                             <span className="text-red-400">[!] INSUFFICIENT FUNDS</span>
                                         )}
                                     </div>
