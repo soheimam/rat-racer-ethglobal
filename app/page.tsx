@@ -1,6 +1,6 @@
 import { Metadata } from "next";
-import App from "./app";
-import { METADATA } from "~/lib/utils";
+import App from "@/app/app";
+import { METADATA } from "@/lib/utils";
 
 const frame = {
   version: "next",
