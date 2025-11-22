@@ -1,8 +1,16 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
 import { getMockRace } from "./mock-data";
 import { Race } from "./schema";
 
+export const METADATA = {
+  name: "Base Mini App Demo",
+  description: "A demo mini app for testing capabilities on Base",
+  bannerImageUrl: 'https://i.imgur.com/2bsV8mV.png',
+  iconImageUrl: 'https://i.imgur.com/brcnijg.png',
+  homeUrl: process.env.NEXT_PUBLIC_URL ?? "https://frames-v2-demo-lilac.vercel.app",
+  splashBackgroundColor: "#FFFFFF"
+}
 // Utility for merging Tailwind classes
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
