@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/components/ui/use-toast';
 import { mintRat } from '@/lib/contracts/mint-rat';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatUnits } from 'viem';
 import { useAccount, useConnect, useReadContract } from 'wagmi';
 
@@ -62,6 +62,7 @@ export default function ShopPage() {
     const [mintedRat, setMintedRat] = useState<MintedRat | null>(null);
     const [pollingForRat, setPollingForRat] = useState(false);
     const [hoveredRat, setHoveredRat] = useState<number | null>(null);
+    const [mounted, setMounted] = useState(false);
 
     // Contract addresses from environment variables
     const RAT_NFT_ADDRESS = process.env.NEXT_PUBLIC_RAT_NFT_ADDRESS as `0x${string}`;
@@ -162,6 +163,10 @@ export default function ShopPage() {
         }
     });
 
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     const handleSelectRat = (ratId: number) => {
         setSelectedRat(ratId);
     };
@@ -260,9 +265,9 @@ export default function ShopPage() {
     return (
         <div className="min-h-screen bg-black text-white relative overflow-hidden">
             {/* Animated Background */}
-            <div className="absolute inset-0 opacity-20">
-                <div className="absolute top-0 left-1/4 w-96 h-96 bg-red-500 rounded-full filter blur-[128px] animate-pulse"></div>
-                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500 rounded-full filter blur-[128px] animate-pulse delay-1000"></div>
+            <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-0 left-1/4 w-96 h-96 bg-gray-700 rounded-full filter blur-[128px] animate-pulse"></div>
+                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-gray-600 rounded-full filter blur-[128px] animate-pulse delay-1000"></div>
             </div>
 
             {/* Scanlines Effect */}
@@ -277,17 +282,30 @@ export default function ShopPage() {
                 {/* Header */}
                 <div className="flex justify-between items-center mb-12">
                     <div>
-                        <h1 className="text-6xl font-black tracking-tighter mb-2"
+                        <h1 className="text-6xl font-black tracking-tighter mb-2 glitch"
+                            data-text="RAT UNDERGROUND"
                             style={{
-                                textShadow: '0 0 20px rgba(255,0,0,0.5), 0 0 40px rgba(255,0,0,0.3)',
-                                fontFamily: 'monospace'
+                                textShadow: '0 0 20px rgba(160,174,192,0.3), 0 0 40px rgba(203,213,224,0.2)',
+                                fontFamily: 'monospace',
+                                color: '#cbd5e0'
                             }}>
                             RAT UNDERGROUND
                         </h1>
-                        <p className="text-sm text-red-400 font-mono tracking-widest">[ MINTING FACILITY // SECTOR 7 ]</p>
+                        <p className="text-sm font-mono tracking-widest" style={{ color: '#718096' }}>[ MINTING FACILITY // SECTOR 7 ]</p>
                     </div>
                     <div className="flex gap-4 items-center">
-                        {!isConnected ? (
+                        {!mounted ? (
+                            <div className="glass-button font-mono font-black px-6 py-3 text-lg border-2"
+                                style={{
+                                    backgroundColor: '#2d3748',
+                                    borderColor: '#4a5568',
+                                    color: '#e2e8f0',
+                                    opacity: 0.5
+                                }}
+                            >
+                                LOADING...
+                            </div>
+                        ) : !isConnected ? (
                             <Button
                                 onClick={() => {
                                     const connector = connectors[0];
@@ -296,24 +314,26 @@ export default function ShopPage() {
                                     }
                                 }}
                                 disabled={isPending || !connectors.length}
-                                className="bg-green-600 hover:bg-green-700 font-mono font-black px-6 py-3 text-lg border-2 border-green-400 disabled:opacity-50"
+                                className="glass-button font-mono font-black px-6 py-3 text-lg border-2 disabled:opacity-50"
                                 style={{
-                                    textShadow: '0 0 10px rgba(0,255,0,0.5)',
-                                    boxShadow: '0 0 20px rgba(0,255,0,0.3)'
+                                    backgroundColor: '#2d3748',
+                                    borderColor: '#4a5568',
+                                    color: '#e2e8f0',
+                                    boxShadow: '0 0 15px rgba(74,85,104,0.3)'
                                 }}
                             >
                                 {isPending ? 'CONNECTING...' : '[!] CONNECT WALLET'}
                             </Button>
                         ) : (
                             <div className="text-right">
-                                <div className="text-xs text-gray-500 font-mono mb-1">CONNECTED</div>
-                                <div className="text-sm text-green-400 font-mono">
+                                <div className="text-xs font-mono mb-1" style={{ color: '#718096' }}>CONNECTED</div>
+                                <div className="text-sm font-mono" style={{ color: '#cbd5e0' }}>
                                     {address?.slice(0, 6)}...{address?.slice(-4)}
                                 </div>
                             </div>
                         )}
                         <Link href="/">
-                            <Button variant="outline" className="border-red-500 text-red-500 hover:bg-red-500 hover:text-black font-mono">
+                            <Button variant="outline" className="glass-button border-gray-600 font-mono" style={{ color: '#a0aec0' }}>
                                 &lt; EXIT
                             </Button>
                         </Link>
@@ -321,38 +341,42 @@ export default function ShopPage() {
                 </div>
 
                 {/* Info Panel */}
-                <div className="mb-12 p-6 bg-linear-to-r from-red-900/20 to-purple-900/20 border-2 border-red-500/30 relative">
-                    <div className="absolute -top-3 left-4 bg-black px-2 text-red-400 text-xs font-mono">ENTRY FEE</div>
+                <div className="mb-12 p-6 border-2 relative" style={{
+                    background: 'linear-gradient(to right, rgba(45,55,72,0.2), rgba(26,32,44,0.2))',
+                    borderColor: '#4a5568'
+                }}>
+                    <div className="absolute -top-3 left-4 bg-black px-2 text-xs font-mono" style={{ color: '#a0aec0' }}>ENTRY FEE</div>
                     <div className="flex items-center justify-between">
                         <div>
-                            <div className="text-4xl font-black text-yellow-400 mb-1">
+                            <div className="text-4xl font-black mb-1" style={{ color: '#e2e8f0' }}>
                                 {selectedRat !== null && mintPrice ? formatUnits(mintPrice, 18) : '...'} {selectedTokenSymbol || 'TOKENS'}
                             </div>
-                            <div className="text-sm text-gray-400 font-mono">
+                            <div className="text-sm font-mono" style={{ color: '#718096' }}>
                                 {selectedRat !== null ? `// ${RAT_RACERS[selectedRat].name} MINT COST` : '// SELECT A RACER'}
                             </div>
                         </div>
                         <div>
                             {!isConnected ? (
-                                <div className="text-red-400 font-mono text-sm animate-pulse">
+                                <div className="font-mono text-sm animate-pulse" style={{ color: '#718096' }}>
                                     [!] WALLET NOT CONNECTED
                                 </div>
                             ) : selectedRat === null ? (
-                                <div className="text-gray-400 font-mono text-sm">
+                                <div className="font-mono text-sm" style={{ color: '#718096' }}>
                                     [?] SELECT RACER TO SEE BALANCE
                                 </div>
                             ) : (
                                 <div className="text-right">
-                                    <div className="text-xs text-gray-500 font-mono mb-1">YOUR BALANCE</div>
-                                    <div className={`text-3xl font-black font-mono ${tokenBalance && mintPrice && Number(formatUnits(tokenBalance as bigint, 18)) >= Number(formatUnits(mintPrice, 18))
-                                        ? 'text-green-400'
-                                        : 'text-red-400'
-                                        }`}>
+                                    <div className="text-xs font-mono mb-1" style={{ color: '#718096' }}>YOUR BALANCE</div>
+                                    <div className={`text-3xl font-black font-mono`} style={{
+                                        color: tokenBalance && mintPrice && Number(formatUnits(tokenBalance as bigint, 18)) >= Number(formatUnits(mintPrice, 18))
+                                            ? '#a0aec0'
+                                            : '#5d4037'
+                                    }}>
                                         {tokenBalance ? Number(formatUnits(tokenBalance as bigint, 18)).toFixed(0) : '0'} {selectedTokenSymbol || 'TOKENS'}
                                     </div>
-                                    <div className="text-xs text-gray-500 font-mono mt-1">
+                                    <div className="text-xs font-mono mt-1" style={{ color: '#718096' }}>
                                         {tokenBalance && mintPrice && Number(formatUnits(tokenBalance as bigint, 18)) < Number(formatUnits(mintPrice, 18)) && (
-                                            <span className="text-red-400">[!] INSUFFICIENT FUNDS</span>
+                                            <span style={{ color: '#5d4037' }}>[!] INSUFFICIENT FUNDS</span>
                                         )}
                                     </div>
                                 </div>
@@ -387,25 +411,26 @@ export default function ShopPage() {
                                     {/* Glow Effect */}
                                     {(isSelected || isHovered) && (
                                         <div
-                                            className="absolute inset-0 rounded-lg filter blur-xl transition-opacity duration-300"
-                                            style={{ backgroundColor: rat.glow }}
+                                            className="absolute inset-0 filter blur-xl transition-opacity duration-300"
+                                            style={{ backgroundColor: 'rgba(74,85,104,0.3)' }}
                                         ></div>
                                     )}
 
                                     {/* Card */}
                                     <div
-                                        className={`relative bg-black border-4 rounded-lg overflow-hidden transition-all duration-300 ${isSelected
-                                            ? 'border-white shadow-2xl'
-                                            : 'border-gray-700 hover:border-gray-500'
-                                            }`}
+                                        className="relative bg-black border-4 overflow-hidden transition-all duration-300"
                                         style={{
-                                            boxShadow: isSelected ? `0 0 30px ${rat.glow}` : 'none'
+                                            borderColor: isSelected ? '#cbd5e0' : '#2d3748',
+                                            boxShadow: isSelected ? '0 0 25px rgba(160,174,192,0.3)' : 'none'
                                         }}
                                     >
                                         {/* Selected Indicator */}
                                         {isSelected && (
                                             <div className="absolute top-4 left-4 z-10">
-                                                <div className="bg-white text-black px-3 py-1 text-xs font-black animate-pulse">
+                                                <div className="px-3 py-1 text-xs font-black animate-pulse" style={{
+                                                    backgroundColor: '#4a5568',
+                                                    color: '#e2e8f0'
+                                                }}>
                                                     SELECTED
                                                 </div>
                                             </div>
@@ -413,10 +438,12 @@ export default function ShopPage() {
 
                                         {/* Price Badge */}
                                         <div className="absolute top-4 right-4 z-10">
-                                            <div className="bg-yellow-500 text-black px-3 py-2 text-sm font-black border-2 border-yellow-300"
+                                            <div className="px-3 py-2 text-sm font-black border-2"
                                                 style={{
-                                                    textShadow: 'none',
-                                                    boxShadow: '0 0 20px rgba(234, 179, 8, 0.5)'
+                                                    backgroundColor: '#2d3748',
+                                                    borderColor: '#4a5568',
+                                                    color: '#e2e8f0',
+                                                    boxShadow: '0 0 15px rgba(74,85,104,0.3)'
                                                 }}>
                                                 {price ? formatUnits(price, 18) : '...'} {tokenSymbol || 'TOKENS'}
                                             </div>
@@ -424,14 +451,15 @@ export default function ShopPage() {
 
                                         {/* Image */}
                                         <div
-                                            className="relative h-80 bg-linear-to-b from-gray-900 to-black flex items-center justify-center overflow-hidden"
+                                            className="relative h-80 flex items-center justify-center overflow-hidden"
                                             style={{
-                                                borderBottom: `2px solid ${rat.color}`
+                                                background: 'linear-gradient(to bottom, #1a202c, #000000)',
+                                                borderBottom: '2px solid #2d3748'
                                             }}
                                         >
-                                            <div className="absolute inset-0 opacity-20"
+                                            <div className="absolute inset-0 opacity-10"
                                                 style={{
-                                                    backgroundImage: `radial-gradient(circle at center, ${rat.color}, transparent)`
+                                                    backgroundImage: 'radial-gradient(circle at center, #4a5568, transparent)'
                                                 }}
                                             ></div>
                                             <img
@@ -446,11 +474,11 @@ export default function ShopPage() {
                                         </div>
 
                                         {/* Info */}
-                                        <div className="p-6 bg-linear-to-b from-gray-900 to-black">
-                                            <div className="text-3xl font-black mb-1 tracking-wider" style={{ color: rat.color }}>
+                                        <div className="p-6" style={{ background: 'linear-gradient(to bottom, #1a202c, #000000)' }}>
+                                            <div className="text-3xl font-black mb-1 tracking-wider" style={{ color: '#cbd5e0' }}>
                                                 {rat.name}
                                             </div>
-                                            <div className="text-sm text-gray-400 font-mono mb-4">
+                                            <div className="text-sm font-mono mb-4" style={{ color: '#718096' }}>
                                                 // {rat.tagline}
                                             </div>
 
@@ -482,23 +510,30 @@ export default function ShopPage() {
                     <Button
                         onClick={handleMint}
                         disabled={minting || selectedRat === null || !isConnected}
-                        className="relative px-16 py-8 text-2xl font-black tracking-wider disabled:opacity-50"
+                        className="glass-button relative px-16 py-8 text-2xl font-black tracking-wider disabled:opacity-50"
                         style={{
                             background: selectedRat !== null
-                                ? `linear-gradient(135deg, ${RAT_RACERS[selectedRat].color}, black)`
-                                : 'linear-gradient(135deg, #333, #111)',
+                                ? 'linear-gradient(135deg, #4a5568, #1a202c)'
+                                : 'linear-gradient(135deg, #2d3748, #1a1a1a)',
                             border: '3px solid',
-                            borderColor: selectedRat !== null ? RAT_RACERS[selectedRat].color : '#666',
+                            borderColor: selectedRat !== null ? '#718096' : '#4a5568',
+                            color: '#e2e8f0',
                             boxShadow: selectedRat !== null && !minting
-                                ? `0 0 30px ${RAT_RACERS[selectedRat].glow}`
+                                ? '0 0 25px rgba(160,174,192,0.3)'
                                 : 'none',
                         }}
                     >
                         {minting ? (
-                            <span className="flex items-center gap-3">
-                                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                                MINTING...
-                            </span>
+                            <div className="industrial-loader">
+                                <div className="industrial-loader-bars">
+                                    <div className="industrial-loader-bar"></div>
+                                    <div className="industrial-loader-bar"></div>
+                                    <div className="industrial-loader-bar"></div>
+                                    <div className="industrial-loader-bar"></div>
+                                    <div className="industrial-loader-bar"></div>
+                                </div>
+                                <span className="loading-text">MINTING</span>
+                            </div>
                         ) : selectedRat === null ? (
                             'SELECT A RACER'
                         ) : (
@@ -510,68 +545,74 @@ export default function ShopPage() {
 
             {/* Success Modal */}
             <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-                <DialogContent className="bg-black border-4 border-green-500 text-white max-w-3xl"
-                    style={{ boxShadow: '0 0 50px rgba(0,255,0,0.3)' }}>
+                <DialogContent className="bg-black border-4 text-white max-w-3xl"
+                    style={{ borderColor: '#4a5568', boxShadow: '0 0 40px rgba(74,85,104,0.3)' }}>
                     <DialogHeader>
-                        <DialogTitle className="text-4xl font-black text-center mb-4" style={{ fontFamily: 'monospace' }}>
-                            <span className="text-green-400">[ RACER MINTED ]</span>
+                        <DialogTitle className="text-4xl font-black text-center mb-4" style={{ fontFamily: 'monospace', color: '#cbd5e0' }}>
+                            [ RACER MINTED ]
                         </DialogTitle>
                     </DialogHeader>
 
                     {pollingForRat ? (
                         <div className="flex flex-col items-center justify-center py-16">
                             <div className="relative w-24 h-24 mb-6">
-                                <div className="absolute inset-0 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-                                <div className="absolute inset-2 border-4 border-green-400 border-b-transparent rounded-full animate-spin-slow"></div>
+                                <div className="absolute inset-0 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#4a5568' }}></div>
+                                <div className="absolute inset-2 border-4 border-b-transparent rounded-full animate-spin-slow" style={{ borderColor: '#718096' }}></div>
                             </div>
-                            <p className="text-green-400 font-mono animate-pulse">// GENERATING RACER STATS...</p>
+                            <p className="font-mono animate-pulse" style={{ color: '#a0aec0' }}>// GENERATING RACER STATS...</p>
                         </div>
                     ) : mintedRat ? (
                         <div className="space-y-6">
                             <div className="flex gap-6">
-                                <div className="w-64 h-64 bg-linear-to-br from-gray-900 to-black border-4 border-green-500 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
+                                <div className="w-64 h-64 border-4 flex items-center justify-center overflow-hidden shrink-0" style={{
+                                    background: 'linear-gradient(to bottom right, #1a202c, #000000)',
+                                    borderColor: '#4a5568'
+                                }}>
                                     <img
                                         src={mintedRat.imageUrl}
                                         alt={mintedRat.name}
                                         className="w-full h-full object-contain"
-                                        style={{ filter: 'drop-shadow(0 0 20px rgba(0,255,0,0.5))' }}
+                                        style={{ filter: 'drop-shadow(0 0 20px rgba(160,174,192,0.3))' }}
                                     />
                                 </div>
 
                                 <div className="flex-1 space-y-4">
                                     <div>
-                                        <div className="text-4xl font-black text-green-400 mb-1">{mintedRat.name}</div>
-                                        <div className="font-mono text-sm text-gray-400">TOKEN #{mintedRat.tokenId}</div>
+                                        <div className="text-4xl font-black mb-1" style={{ color: '#cbd5e0' }}>{mintedRat.name}</div>
+                                        <div className="font-mono text-sm" style={{ color: '#718096' }}>TOKEN #{mintedRat.tokenId}</div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
-                                        <div className="bg-black/50 border-2 border-purple-500 p-3">
-                                            <div className="text-xs text-purple-400 font-mono mb-1">BLOODLINE</div>
-                                            <div className="text-lg font-bold text-purple-300">{mintedRat.stats.bloodline}</div>
+                                        <div className="bg-black/50 border-2 p-3" style={{ borderColor: '#4a5568' }}>
+                                            <div className="text-xs font-mono mb-1" style={{ color: '#718096' }}>BLOODLINE</div>
+                                            <div className="text-lg font-bold" style={{ color: '#a0aec0' }}>{mintedRat.stats.bloodline}</div>
                                         </div>
-                                        <div className="bg-black/50 border-2 border-yellow-500 p-3">
-                                            <div className="text-xs text-yellow-400 font-mono mb-1">RARITY</div>
-                                            <div className="text-lg font-bold text-yellow-300">{mintedRat.rarityScore.toFixed(1)}</div>
+                                        <div className="bg-black/50 border-2 p-3" style={{ borderColor: '#4a5568' }}>
+                                            <div className="text-xs font-mono mb-1" style={{ color: '#718096' }}>RARITY</div>
+                                            <div className="text-lg font-bold" style={{ color: '#a0aec0' }}>{mintedRat.rarityScore.toFixed(1)}</div>
                                         </div>
-                                        <div className="bg-black/50 border-2 border-red-500 p-3">
-                                            <div className="text-xs text-red-400 font-mono mb-1">STAMINA</div>
-                                            <div className="text-2xl font-black text-red-300">{mintedRat.stats.stamina}</div>
+                                        <div className="bg-black/50 border-2 p-3" style={{ borderColor: '#4a5568' }}>
+                                            <div className="text-xs font-mono mb-1" style={{ color: '#718096' }}>STAMINA</div>
+                                            <div className="text-2xl font-black" style={{ color: '#cbd5e0' }}>{mintedRat.stats.stamina}</div>
                                         </div>
-                                        <div className="bg-black/50 border-2 border-blue-500 p-3">
-                                            <div className="text-xs text-blue-400 font-mono mb-1">AGILITY</div>
-                                            <div className="text-2xl font-black text-blue-300">{mintedRat.stats.agility}</div>
+                                        <div className="bg-black/50 border-2 p-3" style={{ borderColor: '#4a5568' }}>
+                                            <div className="text-xs font-mono mb-1" style={{ color: '#718096' }}>AGILITY</div>
+                                            <div className="text-2xl font-black" style={{ color: '#cbd5e0' }}>{mintedRat.stats.agility}</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="bg-linear-to-r from-gray-900 to-black border-2 border-green-500/30 p-4 rounded">
-                                <div className="text-xs text-green-400 font-mono mb-2">[ SPEED DISTRIBUTION // 5 SEGMENTS ]</div>
+                            <div className="border-2 p-4" style={{
+                                background: 'linear-gradient(to right, #1a202c, #000000)',
+                                borderColor: '#4a5568'
+                            }}>
+                                <div className="text-xs font-mono mb-2" style={{ color: '#a0aec0' }}>[ SPEED DISTRIBUTION // 5 SEGMENTS ]</div>
                                 <div className="grid grid-cols-5 gap-2">
                                     {mintedRat.speeds.map((speed, i) => (
-                                        <div key={i} className="bg-black border border-green-500 p-2 text-center">
-                                            <div className="text-xs text-green-400 font-mono">SEG {i + 1}</div>
-                                            <div className="text-lg font-bold text-green-300">{speed.toFixed(1)}</div>
+                                        <div key={i} className="bg-black border p-2 text-center" style={{ borderColor: '#4a5568' }}>
+                                            <div className="text-xs font-mono" style={{ color: '#718096' }}>SEG {i + 1}</div>
+                                            <div className="text-lg font-bold" style={{ color: '#cbd5e0' }}>{speed.toFixed(1)}</div>
                                         </div>
                                     ))}
                                 </div>
@@ -581,22 +622,26 @@ export default function ShopPage() {
                                 <Button
                                     onClick={() => setShowSuccessModal(false)}
                                     variant="outline"
-                                    className="flex-1 border-2 border-gray-500 hover:bg-gray-800 font-mono"
+                                    className="flex-1 border-2 font-mono"
+                                    style={{ borderColor: '#4a5568', color: '#a0aec0' }}
                                 >
                                     [ CLOSE ]
                                 </Button>
                                 <Link href="/my-rats" className="flex-1">
-                                    <Button className="w-full bg-green-600 hover:bg-green-700 font-black">
-                                        VIEW ALL FIGHTERS &gt;
+                                    <Button className="w-full font-black" style={{
+                                        backgroundColor: '#2d3748',
+                                        color: '#e2e8f0'
+                                    }}>
+                                        VIEW ALL RACERS &gt;
                                     </Button>
                                 </Link>
                             </div>
                         </div>
                     ) : (
                         <div className="text-center py-8">
-                            <p className="text-gray-400 font-mono mb-4">// RACER PROCESSING...</p>
+                            <p className="font-mono mb-4" style={{ color: '#718096' }}>// RACER PROCESSING...</p>
                             <Link href="/my-rats">
-                                <Button className="bg-green-600 hover:bg-green-700">CHECK ROSTER</Button>
+                                <Button style={{ backgroundColor: '#2d3748', color: '#e2e8f0' }}>CHECK ROSTER</Button>
                             </Link>
                         </div>
                     )}
