@@ -8,7 +8,7 @@ import { WalletsService } from './wallets';
  * WARNING: Only use in development!
  */
 export async function seedDatabase() {
-    console.log('🌱 Seeding database...');
+    console.log('🌱 Seeding MongoDB database...');
 
     // Create test wallets
     const wallet1 = '0x1111111111111111111111111111111111111111';
@@ -98,20 +98,12 @@ export async function seedDatabase() {
 
     console.log('✅ Created 1 completed race with results');
 
-    console.log('🎉 Database seeded successfully!');
-
+    console.log('🎉 MongoDB database seeded successfully!');
+    
     return {
         wallets: [wallet1, wallet2, wallet3],
         rats,
         races: [race1, race2, completedRace],
     };
-}
-
-/**
- * Clear all data (use with caution!)
- */
-export async function clearDatabase() {
-    console.warn('⚠️  Clearing database not implemented - manually delete keys from Vercel KV dashboard');
-    // Note: Implement if needed, but be very careful!
 }
 

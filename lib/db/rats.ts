@@ -1,23 +1,21 @@
-import { RedisClient } from './client';
+import { getDb, generateId } from './client';
 import { Rat } from './types';
 
 export class RatsService {
     /**
      * Create a new rat (minting)
      */
-    static async createRat(owner: string, ratData: Omit<Rat, 'id' | 'owner' | 'createdAt'>): Promise<Rat> {
+    static async createRat(owner: string, ratData: Omit<Rat, 'id' | 'owner' | 'createdAt' | '_id'>): Promise<Rat> {
+        const db = await getDb();
+        
         const rat: Rat = {
-            id: RedisClient.generateId('rat'),
+            id: generateId('rat'),
             owner,
             ...ratData,
             createdAt: new Date().toISOString(),
         };
 
-        // Save rat
-        await RedisClient.kv.set(RedisClient.keys.rat(rat.id), JSON.stringify(rat));
-
-        // Add to wallet's rats
-        await RedisClient.kv.sadd(RedisClient.keys.walletRats(owner), rat.id);
+        await db.collection('rats').insertOne(rat as any);
 
         return rat;
     }
@@ -26,23 +24,22 @@ export class RatsService {
      * Get a rat by ID
      */
     static async getRat(ratId: string): Promise<Rat | null> {
-        const data = await RedisClient.kv.get<string>(RedisClient.keys.rat(ratId));
-        if (!data) return null;
-        return JSON.parse(data);
+        const db = await getDb();
+        const rat = await db.collection('rats').findOne<Rat>({ id: ratId });
+        return rat;
     }
 
     /**
      * Get all rats owned by a wallet
      */
     static async getRatsByOwner(owner: string): Promise<Rat[]> {
-        const ratIds = await RedisClient.kv.smembers(RedisClient.keys.walletRats(owner));
-        if (!ratIds || ratIds.length === 0) return [];
-
-        const rats = await Promise.all(
-            ratIds.map(id => this.getRat(id as string))
-        );
-
-        return rats.filter((rat): rat is Rat => rat !== null);
+        const db = await getDb();
+        const rats = await db.collection('rats')
+            .find<Rat>({ owner })
+            .sort({ createdAt: -1 })
+            .toArray();
+        
+        return rats;
     }
 
     /**
@@ -52,37 +49,42 @@ export class RatsService {
         ratId: string,
         update: { wins?: number; placed?: number; losses?: number }
     ): Promise<void> {
+        const db = await getDb();
         const rat = await this.getRat(ratId);
         if (!rat) throw new Error('Rat not found');
 
-        if (update.wins !== undefined) rat.wins += update.wins;
-        if (update.placed !== undefined) rat.placed += update.placed;
-        if (update.losses !== undefined) rat.losses += update.losses;
+        const newWins = rat.wins + (update.wins || 0);
+        const newPlaced = rat.placed + (update.placed || 0);
+        const newLosses = rat.losses + (update.losses || 0);
 
         // Recalculate level
-        rat.level = this.calculateLevel(rat.wins, rat.placed, rat.dob);
+        const newLevel = this.calculateLevel(newWins, newPlaced, rat.dob);
 
-        await RedisClient.kv.set(RedisClient.keys.rat(ratId), JSON.stringify(rat));
+        await db.collection('rats').updateOne(
+            { id: ratId },
+            {
+                $set: {
+                    wins: newWins,
+                    placed: newPlaced,
+                    losses: newLosses,
+                    level: newLevel,
+                }
+            }
+        );
     }
 
     /**
      * Transfer rat ownership
      */
     static async transferRat(ratId: string, newOwner: string): Promise<void> {
+        const db = await getDb();
         const rat = await this.getRat(ratId);
         if (!rat) throw new Error('Rat not found');
 
-        const oldOwner = rat.owner;
-
-        // Remove from old owner
-        await RedisClient.kv.srem(RedisClient.keys.walletRats(oldOwner), ratId);
-
-        // Add to new owner
-        await RedisClient.kv.sadd(RedisClient.keys.walletRats(newOwner), ratId);
-
-        // Update rat owner
-        rat.owner = newOwner;
-        await RedisClient.kv.set(RedisClient.keys.rat(ratId), JSON.stringify(rat));
+        await db.collection('rats').updateOne(
+            { id: ratId },
+            { $set: { owner: newOwner } }
+        );
     }
 
     /**
@@ -116,7 +118,7 @@ export class RatsService {
                 agility: Math.floor(Math.random() * 50) + 50, // 50-100
                 bloodline: this.randomBloodline(),
             },
-            speeds: Array(5).fill(0).map(() =>
+            speeds: Array(5).fill(0).map(() => 
                 0.7 + Math.random() * 0.3 // 0.7 to 1.0
             ),
         };

@@ -1,7 +1,8 @@
-// Core data types for Redis storage
+// Core data types for MongoDB storage
 
 export interface Rat {
-    id: string;
+    _id?: string; // MongoDB ID
+    id: string; // Unique rat ID
     name: string;
     owner: string; // wallet address
     modelIndex: number; // 1-6 for which model to use
@@ -30,6 +31,7 @@ export interface RaceEntry {
 }
 
 export interface Race {
+    _id?: string; // MongoDB ID
     id: string;
     title: string;
     description: string;
@@ -55,7 +57,8 @@ export interface Race {
 }
 
 export interface Wallet {
-    address: string;
+    _id?: string; // MongoDB ID
+    address: string; // Unique wallet address
     ratIds: string[];
     raceHistory: string[]; // race IDs
     totalWins: number;

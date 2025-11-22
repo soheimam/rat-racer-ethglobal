@@ -1,14 +1,16 @@
-import { RedisClient } from './client';
-import { RacesService } from './races';
-import { RatsService } from './rats';
+import { getDb } from './client';
 import { Wallet } from './types';
+import { RatsService } from './rats';
+import { RacesService } from './races';
 
 export class WalletsService {
     /**
      * Get or create a wallet
      */
     static async getOrCreateWallet(address: string): Promise<Wallet> {
-        const existing = await this.getWallet(address);
+        const db = await getDb();
+        const existing = await db.collection('wallets').findOne<Wallet>({ address });
+        
         if (existing) return existing;
 
         const wallet: Wallet = {
@@ -20,7 +22,7 @@ export class WalletsService {
             createdAt: new Date().toISOString(),
         };
 
-        await RedisClient.kv.set(RedisClient.keys.wallet(address), JSON.stringify(wallet));
+        await db.collection('wallets').insertOne(wallet as any);
         return wallet;
     }
 
@@ -28,9 +30,9 @@ export class WalletsService {
      * Get a wallet by address
      */
     static async getWallet(address: string): Promise<Wallet | null> {
-        const data = await RedisClient.kv.get<string>(RedisClient.keys.wallet(address));
-        if (!data) return null;
-        return JSON.parse(data);
+        const db = await getDb();
+        const wallet = await db.collection('wallets').findOne<Wallet>({ address });
+        return wallet;
     }
 
     /**
@@ -39,7 +41,7 @@ export class WalletsService {
     static async getWalletWithRats(address: string) {
         const wallet = await this.getOrCreateWallet(address);
         const rats = await RatsService.getRatsByOwner(address);
-
+        
         return {
             ...wallet,
             rats,
@@ -63,25 +65,32 @@ export class WalletsService {
      * Update wallet stats after a race
      */
     static async updateWalletStats(address: string, won: boolean): Promise<void> {
+        const db = await getDb();
         const wallet = await this.getOrCreateWallet(address);
 
-        wallet.totalRaces += 1;
-        if (won) {
-            wallet.totalWins += 1;
-        }
-
-        await RedisClient.kv.set(RedisClient.keys.wallet(address), JSON.stringify(wallet));
+        await db.collection('wallets').updateOne(
+            { address },
+            {
+                $set: {
+                    totalRaces: wallet.totalRaces + 1,
+                    totalWins: wallet.totalWins + (won ? 1 : 0),
+                }
+            }
+        );
     }
 
     /**
      * Add race to wallet history
      */
     static async addRaceToHistory(address: string, raceId: string): Promise<void> {
+        const db = await getDb();
         const wallet = await this.getOrCreateWallet(address);
 
         if (!wallet.raceHistory.includes(raceId)) {
-            wallet.raceHistory.push(raceId);
-            await RedisClient.kv.set(RedisClient.keys.wallet(address), JSON.stringify(wallet));
+            await db.collection('wallets').updateOne(
+                { address },
+                { $push: { raceHistory: raceId } } as any
+            );
         }
     }
 }

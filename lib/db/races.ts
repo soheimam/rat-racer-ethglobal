@@ -1,6 +1,6 @@
-import { RedisClient } from './client';
-import { RatsService } from './rats';
+import { getDb, generateId } from './client';
 import { Race, RaceEntry } from './types';
+import { RatsService } from './rats';
 
 export class RacesService {
     /**
@@ -11,8 +11,10 @@ export class RacesService {
         description: string;
         entryFee: string;
     }): Promise<Race> {
+        const db = await getDb();
+        
         const race: Race = {
-            id: RedisClient.generateId('race'),
+            id: generateId('race'),
             title: data.title,
             description: data.description,
             status: 'waiting',
@@ -23,14 +25,7 @@ export class RacesService {
             createdAt: new Date().toISOString(),
         };
 
-        // Save race
-        await RedisClient.kv.set(RedisClient.keys.race(race.id), JSON.stringify(race));
-
-        // Add to active races list
-        await RedisClient.kv.zadd(RedisClient.keys.activeRaces(), {
-            score: Date.now(),
-            member: race.id,
-        });
+        await db.collection('races').insertOne(race as any);
 
         return race;
     }
@@ -39,15 +34,16 @@ export class RacesService {
      * Get a race by ID
      */
     static async getRace(raceId: string): Promise<Race | null> {
-        const data = await RedisClient.kv.get<string>(RedisClient.keys.race(raceId));
-        if (!data) return null;
-        return JSON.parse(data);
+        const db = await getDb();
+        const race = await db.collection('races').findOne<Race>({ id: raceId });
+        return race;
     }
 
     /**
      * Enter a rat into a race
      */
     static async enterRace(raceId: string, ratId: string, owner: string): Promise<Race> {
+        const db = await getDb();
         const race = await this.getRace(raceId);
         if (!race) throw new Error('Race not found');
 
@@ -79,20 +75,28 @@ export class RacesService {
 
         race.participants.push(entry);
 
-        // Update prize pool (simplified - you'll add crypto logic later)
+        // Update prize pool
         const currentPool = parseFloat(race.prizePool);
         const fee = parseFloat(race.entryFee);
         race.prizePool = (currentPool + fee).toString();
 
         // Check if race is now full
+        let updateData: any = {
+            participants: race.participants,
+            prizePool: race.prizePool,
+        };
+
         if (race.participants.length === race.maxParticipants) {
             race.status = 'full';
-            // Auto-start race
-            await this.startRace(race.id);
+            updateData.status = 'full';
+            updateData.startedAt = new Date().toISOString();
+            race.startedAt = updateData.startedAt;
         }
 
-        // Save updated race
-        await RedisClient.kv.set(RedisClient.keys.race(race.id), JSON.stringify(race));
+        await db.collection('races').updateOne(
+            { id: raceId },
+            { $set: updateData }
+        );
 
         return race;
     }
@@ -101,13 +105,22 @@ export class RacesService {
      * Start a race (automatically called when full)
      */
     static async startRace(raceId: string): Promise<Race> {
+        const db = await getDb();
         const race = await this.getRace(raceId);
         if (!race) throw new Error('Race not found');
 
+        await db.collection('races').updateOne(
+            { id: raceId },
+            {
+                $set: {
+                    status: 'running',
+                    startedAt: new Date().toISOString(),
+                }
+            }
+        );
+
         race.status = 'running';
         race.startedAt = new Date().toISOString();
-
-        await RedisClient.kv.set(RedisClient.keys.race(race.id), JSON.stringify(race));
 
         return race;
     }
@@ -119,6 +132,7 @@ export class RacesService {
         raceId: string,
         results: { ratId: string; finishTime: number }[]
     ): Promise<Race> {
+        const db = await getDb();
         const race = await this.getRace(raceId);
         if (!race) throw new Error('Race not found');
 
@@ -163,14 +177,17 @@ export class RacesService {
         }
 
         // Save updated race
-        await RedisClient.kv.set(RedisClient.keys.race(race.id), JSON.stringify(race));
-
-        // Move from active to completed
-        await RedisClient.kv.zrem(RedisClient.keys.activeRaces(), race.id);
-        await RedisClient.kv.zadd(RedisClient.keys.completedRaces(), {
-            score: Date.now(),
-            member: race.id,
-        });
+        await db.collection('races').updateOne(
+            { id: raceId },
+            {
+                $set: {
+                    status: race.status,
+                    completedAt: race.completedAt,
+                    winner: race.winner,
+                    results: race.results,
+                }
+            }
+        );
 
         return race;
     }
@@ -179,57 +196,44 @@ export class RacesService {
      * Get all active races (waiting or running)
      */
     static async getActiveRaces(): Promise<Race[]> {
-        const raceIds = await RedisClient.kv.zrange(RedisClient.keys.activeRaces(), 0, -1);
-        if (!raceIds || raceIds.length === 0) return [];
-
-        const races = await Promise.all(
-            raceIds.map(id => this.getRace(id as string))
-        );
-
-        return races
-            .filter((race): race is Race => race !== null)
-            .filter(race => race.status === 'waiting' || race.status === 'running');
+        const db = await getDb();
+        const races = await db.collection('races')
+            .find<Race>({ 
+                status: { $in: ['waiting', 'running', 'full'] }
+            })
+            .sort({ createdAt: -1 })
+            .toArray();
+        
+        return races;
     }
 
     /**
      * Get completed races (most recent first)
      */
     static async getCompletedRaces(limit: number = 20): Promise<Race[]> {
-        const raceIds = await RedisClient.kv.zrange(
-            RedisClient.keys.completedRaces(),
-            0,
-            limit - 1,
-            { rev: true }
-        );
-
-        if (!raceIds || raceIds.length === 0) return [];
-
-        const races = await Promise.all(
-            raceIds.map(id => this.getRace(id as string))
-        );
-
-        return races.filter((race): race is Race => race !== null && race.status === 'completed');
+        const db = await getDb();
+        const races = await db.collection('races')
+            .find<Race>({ status: 'completed' })
+            .sort({ completedAt: -1 })
+            .limit(limit)
+            .toArray();
+        
+        return races;
     }
 
     /**
      * Get races by participant wallet
      */
     static async getRacesByWallet(wallet: string): Promise<Race[]> {
-        // Get all active and completed race IDs
-        const activeIds = await RedisClient.kv.zrange(RedisClient.keys.activeRaces(), 0, -1);
-        const completedIds = await RedisClient.kv.zrange(RedisClient.keys.completedRaces(), 0, -1);
-
-        const allIds = [...(activeIds || []), ...(completedIds || [])];
-        if (allIds.length === 0) return [];
-
-        const races = await Promise.all(
-            allIds.map(id => this.getRace(id as string))
-        );
-
-        // Filter races where wallet is a participant
-        return races
-            .filter((race): race is Race => race !== null)
-            .filter(race => race.participants.some(p => p.owner === wallet));
+        const db = await getDb();
+        const races = await db.collection('races')
+            .find<Race>({ 
+                'participants.owner': wallet 
+            })
+            .sort({ createdAt: -1 })
+            .toArray();
+        
+        return races;
     }
 }
 

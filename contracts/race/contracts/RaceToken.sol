@@ -2,34 +2,15 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title RaceToken
- * @notice Mock ERC20 token for race entry fees
- * @dev This is a simple token with minting capabilities for testing
+ * @notice ERC20 token for race entry fees
  */
-contract RaceToken is ERC20, Ownable {
-    constructor() ERC20("Race Token", "RACE") Ownable(msg.sender) {
-        // Mint initial supply to deployer
-        _mint(msg.sender, 1_000_000 * 10 ** decimals());
-    }
-
-    /**
-     * @notice Mint tokens (only owner)
-     * @param to Address to mint to
-     * @param amount Amount to mint
-     */
-    function mint(address to, uint256 amount) external onlyOwner {
-        _mint(to, amount);
-    }
-
-    /**
-     * @notice Faucet function for testing - anyone can get tokens
-     * @dev Remove this in production
-     */
-    function faucet() external {
-        _mint(msg.sender, 1000 * 10 ** decimals());
+contract RaceToken is ERC20 {
+    constructor() ERC20("Race Token", "RACE") {
+        // Mint full supply to designated address
+        _mint(0x584cb34c3d52Bf59219e4e836FeaF63D4F90c830, 1_000_000_000 * 10 ** decimals());
     }
 }
 

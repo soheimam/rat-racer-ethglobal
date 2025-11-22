@@ -1,3 +1,23 @@
 {
-  "name": "hardhat-project"
+  "name": "@rat-racer/race-contracts",
+  "version": "1.0.0",
+  "description": "Race management contracts for Rat Racer",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "test:e2e": "hardhat test test/E2E.test.ts",
+    "test:coverage": "hardhat coverage",
+    "deploy": "hardhat ignition deploy ignition/modules/RaceContracts.ts",
+    "deploy:all": "npx hardhat run scripts/deploy-all.ts"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox-viem": "^3.0.0",
+    "@types/node": "^20.0.0",
+    "dotenv": "^17.2.3",
+    "hardhat": "^2.22.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0"
+  }
 }
