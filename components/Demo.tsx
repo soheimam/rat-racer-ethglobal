@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import React, {  } from "react";
+import Stylesheet from "@/app/api/Stylesheet";
 
 import { useAccount } from "wagmi";
 
@@ -24,6 +25,7 @@ export default function Demo() {
       <Link href="/races">
         <button>Races</button>
       </Link>
+      <Stylesheet />
     </div>
   );
 }
