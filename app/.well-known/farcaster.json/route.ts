@@ -3,11 +3,9 @@ import { METADATA } from "../../../lib/utils";
 export async function GET() {
   const config = {
     accountAssociation: {
-      header:
-        "eyJmaWQiOjEyMTQyLCJ0eXBlIjoiY3VzdG9keSIsImtleSI6IjB4MDRlNkYxMTFlQmY2RkQyNTU3NmQ0ODA0ODA5NjI0MzVEYzNhYThEOCJ9",
-      payload: "eyJkb21haW4iOiJmcmFtZXMtdjItZGVtby1saWxhYy52ZXJjZWwuYXBwIn0",
-      signature:
-        "MHg5MGI1YzA0Zjc3MGY1M2I4M2I3OGQzOTMwNTNjMmJjZjUwNmE3ZThjNDViYmEwNDk2OTcwZTM1ZTQ0YzU2MGU1Nzc4Y2Y1ZTJkNDY2YzE1MWQxNGMzYmFjNzM3ZDcxZGEwZDVjYWJmMGMzZTdhYTc2YzRjMmQ5MmE5NDJhYjkyODFj",
+        header: "eyJmaWQiOjE0NDA3MTYsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg4MzJlMjJFOEM0REQwNjZmNTdDMzA4N2NDNzcxNWExNzdiOTEyNEVmIn0",
+        payload: "eyJkb21haW4iOiJyYXQtcmFjZS1nYW1tYS52ZXJjZWwuYXBwIn0",
+        signature: "/wFtMX3clnXxUbuNBUW29NERhCUe6vIJfIvAmzP70qEB6bQdOgCpr+PxqsoLo4MKpdO/87ioTooQRcpnuQVCqBs="
     },
       "miniapp": {
         "version": "1",
@@ -21,7 +19,7 @@ export async function GET() {
         "ogTitle": METADATA.name,
         "ogDescription": METADATA.description,
         "ogImageUrl": METADATA.bannerImageUrl,
-        "canonicalDomain": "frames-v2-demo-lilac.vercel.app",
+        "canonicalDomain": "https://rat-race-gamma.vercel.app/",
         "noindex": false,
         "tags": ["base", "baseapp", "miniapp", "demo", "basepay"]
       },
