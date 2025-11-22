@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-
-
 const vector3Schema = z.object({
     x: z.number(),
     y: z.number(),
