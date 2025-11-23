@@ -1,87 +1,112 @@
 /**
- * Complete deployment script for Base Mainnet
+ * Deploy RatNFT and RaceManager contracts
  * 
- * Run with: npx hardhat run scripts/deploy-all.ts --network base
+ * RaceToken is already deployed at: 0xea4eaca6e4197ecd092ba77b5da768f19287e06f
+ * 
+ * Usage:
+ *   npx hardhat run scripts/deploy-all.ts --network base
  */
 
 import hre from "hardhat";
-import { formatEther } from "viem";
+import { formatUnits } from "viem";
+
+const RACE_TOKEN_ADDRESS = "0xea4eaca6e4197ecd092ba77b5da768f19287e06f";
 
 async function main() {
-  console.log("========================================");
-  console.log("Rat Racer - Base Mainnet Deployment");
-  console.log("========================================\n");
+  console.log('\n🎮 Deploying Rat Racer Contracts');
+  console.log('═'.repeat(70));
 
-  console.log("Network:", hre.network.name);
-  console.log("PRIVATE_KEY present:", !!process.env.PRIVATE_KEY);
-  console.log("RPC_ENDPOINT:", process.env.NEXT_PUBLIC_RPC_ENDPOINT || "not set");
-
-  const blobBaseUrl = process.env.BLOG_BASE_URL;
-  if (!blobBaseUrl) {
-    throw new Error("BLOG_BASE_URL not set in .env");
-  }
-  console.log("BLOG_BASE_URL:", blobBaseUrl);
-  console.log("");
-
+  const [deployer] = await hre.viem.getWalletClients();
   const publicClient = await hre.viem.getPublicClient();
-  const walletClients = await hre.viem.getWalletClients();
 
-  console.log("Wallet clients length:", walletClients.length);
+  console.log(`📋 Deployer: ${deployer.account.address}`);
+  console.log(`🌐 Network: ${hre.network.name} (Chain ID: ${await publicClient.getChainId()})`);
 
-  if (walletClients.length === 0) {
-    throw new Error("No wallet clients available. Check PRIVATE_KEY in .env");
-  }
+  const balance = await publicClient.getBalance({ address: deployer.account.address });
+  console.log(`💰 Deployer Balance: ${formatUnits(balance, 18)} ETH`);
+  console.log(`🎫 RACE Token: ${RACE_TOKEN_ADDRESS}`);
 
-  const deployer = walletClients[0];
-  console.log("Deploying contracts with account:", deployer.account.address);
+  // Step 1: Deploy RatNFT
+  console.log('\n' + '─'.repeat(70));
+  console.log('📦 Step 1: Deploying RatNFT...');
+  console.log('─'.repeat(70));
 
-  const balance = await publicClient.getBalance({
-    address: deployer.account.address,
-  });
-  console.log("Account balance:", formatEther(balance), "ETH\n");
-
-  // 1. Deploy RatNFT with BLOB_BASE_URL for metadata
-  console.log("1. Deploying RatNFT...");
   const ratNFT = await hre.viem.deployContract("RatNFT", [
-    "Rat Racer NFT",
-    "RATRACE",
-    blobBaseUrl // Base URL for metadata from Blob Storage
+    "Rat Racer", // name
+    "RAT", // symbol
+    process.env.BLOB_BASE_URL || "https://placeholder.com/metadata/", // baseTokenURI (will be updated)
   ]);
-  console.log("✓ RatNFT deployed to:", ratNFT.address);
-  console.log("");
 
-  // 2. Deploy RaceToken
-  console.log("2. Deploying RaceToken...");
-  const raceToken = await hre.viem.deployContract("RaceToken", []);
-  console.log("✓ RaceToken deployed to:", raceToken.address);
-  console.log("  Initial supply: 10,000 RACE minted to deployer");
-  console.log("");
+  console.log(`✅ RatNFT deployed: ${ratNFT.address}`);
 
-  // 3. Deploy RaceManager
-  console.log("3. Deploying RaceManager...");
-  const raceManager = await hre.viem.deployContract("RaceManager", [ratNFT.address]);
-  console.log("✓ RaceManager deployed to:", raceManager.address);
-  console.log("");
+  // Step 2: Deploy RaceManager
+  console.log('\n' + '─'.repeat(70));
+  console.log('📦 Step 2: Deploying RaceManager...');
+  console.log('─'.repeat(70));
+
+  const raceManager = await hre.viem.deployContract("RaceManager", [
+    ratNFT.address,
+  ]);
+
+  console.log(`✅ RaceManager deployed: ${raceManager.address}`);
+
+  // Step 3: Approve RACE token in RaceManager
+  console.log('\n' + '─'.repeat(70));
+  console.log('📦 Step 3: Approving RACE token...');
+  console.log('─'.repeat(70));
+
+  const hash = await raceManager.write.addApprovedToken([RACE_TOKEN_ADDRESS]);
+  console.log(`📝 Transaction: ${hash}`);
+  await publicClient.waitForTransactionReceipt({ hash });
+  console.log(`✅ RACE token approved in RaceManager`);
+
+  // Step 4: Transfer RatNFT ownership (optional)
+  // Keeping deployer as owner for now
 
   // Summary
-  console.log("========================================");
-  console.log("Deployment Complete!");
-  console.log("========================================\n");
-  console.log("Contract Addresses:");
-  console.log("  RatNFT:        ", ratNFT.address);
-  console.log("  RaceToken:     ", raceToken.address);
-  console.log("  RaceManager:   ", raceManager.address);
-  console.log("");
-  console.log("Add these to your .env file:");
-  console.log(`NEXT_PUBLIC_RAT_NFT_ADDRESS=${ratNFT.address}`);
-  console.log(`NEXT_PUBLIC_RACE_TOKEN_ADDRESS=${raceToken.address}`);
-  console.log(`NEXT_PUBLIC_RACE_MANAGER_ADDRESS=${raceManager.address}`);
-  console.log("");
-  console.log("Next Steps:");
-  console.log("1. Set baseURI on RatNFT (after Blob Storage setup)");
-  console.log("2. Configure webhooks (Alchemy/QuickNode)");
-  console.log("3. Mint test rats to wallets");
-  console.log("");
+  console.log('\n' + '═'.repeat(70));
+  console.log('🎉 Deployment Complete!');
+  console.log('═'.repeat(70));
+
+  console.log('\n📋 Contract Addresses:');
+  console.log(`RatNFT:       ${ratNFT.address}`);
+  console.log(`RaceManager:  ${raceManager.address}`);
+  console.log(`RaceToken:    ${RACE_TOKEN_ADDRESS} (already deployed)`);
+
+  console.log('\n📝 Next Steps:');
+  console.log('─'.repeat(70));
+
+  console.log('\n1. Set RatNFT Base URI (after deployment):');
+  console.log(`   cd ../rat`);
+  console.log(`   RAT_NFT_ADDRESS=${ratNFT.address} \\`);
+  console.log(`   BLOB_BASE_URL=\${BLOB_BASE_URL} \\`);
+  console.log(`   npx hardhat run scripts/set-base-uri.ts --network base`);
+
+  console.log('\n2. Verify contracts on BaseScan:');
+  console.log(`   npx hardhat verify --network base ${ratNFT.address} \\`);
+  console.log(`     "Rat Racer" "RAT" "${process.env.BLOB_BASE_URL || 'https://placeholder.com/metadata/'}"`);
+  console.log(`   npx hardhat verify --network base ${raceManager.address} ${ratNFT.address}`);
+
+  console.log('\n3. Update .env with addresses:');
+  console.log(`   RAT_NFT_ADDRESS="${ratNFT.address}"`);
+  console.log(`   RACE_MANAGER_ADDRESS="${raceManager.address}"`);
+  console.log(`   RACE_TOKEN_ADDRESS="${RACE_TOKEN_ADDRESS}"`);
+
+  console.log('\n4. Add more approved tokens (if needed):');
+  console.log(`   TOKEN_ADDRESS=0x... \\`);
+  console.log(`   RACE_MANAGER_ADDRESS=${raceManager.address} \\`);
+  console.log(`   npx hardhat run scripts/manage-approved-tokens.ts --network base`);
+
+  console.log('\n5. View on BaseScan:');
+  console.log(`   RatNFT:      https://basescan.org/address/${ratNFT.address}`);
+  console.log(`   RaceManager: https://basescan.org/address/${raceManager.address}`);
+
+  console.log('\n💾 Save these for frontend:');
+  console.log(`export RAT_NFT_ADDRESS="${ratNFT.address}"`);
+  console.log(`export RACE_MANAGER_ADDRESS="${raceManager.address}"`);
+  console.log(`export RACE_TOKEN_ADDRESS="${RACE_TOKEN_ADDRESS}"`);
+
+  console.log('');
 }
 
 main()
@@ -90,4 +115,3 @@ main()
     console.error(error);
     process.exit(1);
   });
-

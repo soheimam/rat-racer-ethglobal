@@ -5,10 +5,10 @@
  * Purpose: Update final race stats in MongoDB
  */
 
-import { WalletsService } from '@/lib/db';
+import { RatsService, WalletsService } from '@/lib/db';
 import { getDb } from '@/lib/db/client';
 import { logger } from '@/lib/logger';
-import { RaceFinishedPayload } from '@/lib/types/webhook';
+import { ContractEvent, RaceFinishedPayload } from '@/lib/types/webhook';
 import { getRawBody, verifyWebhookSignature } from '@/lib/webhook-verify';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAddress } from 'viem';
@@ -61,15 +61,25 @@ export async function POST(request: NextRequest) {
 
         logger.logWebhookPayload('RaceFinished', payload);
 
+        // Validate event type - return 200 if it's not the expected event
+        if (payload.event_name !== ContractEvent.RACE_FINISHED) {
+            log.info('Received unexpected event type, ignoring gracefully', {
+                received: payload.event_name,
+                expected: ContractEvent.RACE_FINISHED,
+                txHash: payload.transaction_hash,
+            });
+            return NextResponse.json({
+                success: true,
+                skipped: true,
+                message: `This endpoint handles ${ContractEvent.RACE_FINISHED} events only. Received: ${payload.event_name}`,
+            }, { status: 200 });
+        }
+
         log.info('Processing race finished event', {
             raceId: payload.parameters.raceId,
             winners: payload.parameters.winners,
             txHash: payload.transaction_hash,
         });
-
-        if (payload.event_name !== 'RaceFinished') {
-            return NextResponse.json({ error: 'Invalid event type' }, { status: 400 });
-        }
 
         const { raceId, winningRatTokenIds, winners, prizes } = payload.parameters;
 
@@ -91,9 +101,12 @@ export async function POST(request: NextRequest) {
 
         log.info('Updated race in MongoDB', { raceId });
 
-        // Update rat stats
+        // Update rat stats and award XP
+        const raceResults: any[] = [];
+
         for (let i = 0; i < winningRatTokenIds.length; i++) {
             const tokenId = Number(winningRatTokenIds[i]);
+            const position = i + 1; // 1-6
 
             try {
                 const rat = await db.collection('rats').findOne({
@@ -106,26 +119,52 @@ export async function POST(request: NextRequest) {
                     continue;
                 }
 
-                const update: any = {};
-                if (i === 0) {
-                    update.wins = (rat.wins || 0) + 1;
-                } else if (i === 1 || i === 2) {
-                    update.placed = (rat.placed || 0) + 1;
+                // Update wins/placed/losses count
+                const statsUpdate: any = {};
+                if (position === 1) {
+                    statsUpdate.wins = (rat.wins || 0) + 1;
+                } else if (position === 2 || position === 3) {
+                    statsUpdate.placed = (rat.placed || 0) + 1;
                 } else {
-                    update.losses = (rat.losses || 0) + 1;
+                    statsUpdate.losses = (rat.losses || 0) + 1;
                 }
 
-                update.level = Math.floor((update.wins || rat.wins || 0) / 10) +
-                    Math.floor((update.placed || rat.placed || 0) / 20) + 1;
+                // Award XP and update level using the XP system
+                const xpResult = await RatsService.awardRaceXP(tokenId, position);
 
+                // Combine stats update with XP update (XP/level already set by awardRaceXP)
                 await db.collection('rats').updateOne(
                     { id: rat.id },
-                    { $set: update }
+                    { $set: statsUpdate }
                 );
 
-                log.info('Updated rat stats', { ratId: rat.id, position: i + 1 });
+                const resultInfo = {
+                    ratId: rat.id,
+                    tokenId,
+                    position,
+                    xpGained: xpResult.xpGained,
+                    newXP: xpResult.newXP,
+                    oldLevel: xpResult.oldLevel,
+                    newLevel: xpResult.newLevel,
+                    leveledUp: xpResult.leveledUp,
+                };
+
+                raceResults.push(resultInfo);
+
+                log.info('Updated rat stats and awarded XP', resultInfo);
+
+                // Log level up events separately for visibility
+                if (xpResult.leveledUp) {
+                    log.info('RAT LEVELED UP!', {
+                        ratId: rat.id,
+                        ratName: rat.name,
+                        oldLevel: xpResult.oldLevel,
+                        newLevel: xpResult.newLevel,
+                        position,
+                    });
+                }
             } catch (error: any) {
-                log.error('Failed to update rat stats', error, { tokenId });
+                log.error('Failed to update rat stats', error, { tokenId, position });
             }
         }
 
@@ -151,6 +190,7 @@ export async function POST(request: NextRequest) {
                 ratTokenId: winningRatTokenIds[i],
                 prize,
             })),
+            raceResults, // Include XP gains and level ups
         });
 
     } catch (error: any) {

@@ -304,3 +304,245 @@
     opacity: 1;
   }
 }
+
+/* Token Icon Glitch Effect */
+.token-glitch-container {
+  animation: token-container-pulse 6s ease-in-out infinite;
+}
+
+@keyframes token-container-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  10%,
+  12% {
+    transform: scale(1.05) translateX(2px);
+  }
+  14% {
+    transform: scale(0.98) translateX(-2px);
+  }
+  16% {
+    transform: scale(1);
+  }
+  50%,
+  52% {
+    transform: scale(1.03) translateX(-1px);
+  }
+  54% {
+    transform: scale(0.99) translateX(1px);
+  }
+  56% {
+    transform: scale(1);
+  }
+}
+
+.token-glitch {
+  position: relative;
+  animation: token-glitch-anim 3s infinite;
+}
+
+@keyframes token-glitch-anim {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    filter: hue-rotate(0deg) contrast(1);
+    opacity: 1;
+  }
+  8% {
+    transform: translate(0, 0);
+    filter: hue-rotate(0deg) contrast(1);
+    opacity: 1;
+  }
+  9% {
+    transform: translate(-3px, 2px);
+    filter: hue-rotate(90deg) contrast(1.2);
+    opacity: 0.9;
+  }
+  10% {
+    transform: translate(2px, -2px);
+    filter: hue-rotate(-90deg) contrast(1.3);
+    opacity: 0.85;
+  }
+  11% {
+    transform: translate(-2px, 1px);
+    filter: hue-rotate(45deg) contrast(1.1);
+    opacity: 0.95;
+  }
+  12% {
+    transform: translate(0, 0);
+    filter: hue-rotate(0deg) contrast(1);
+    opacity: 1;
+  }
+  44% {
+    transform: translate(0, 0);
+    filter: hue-rotate(0deg) contrast(1);
+    opacity: 1;
+  }
+  45% {
+    transform: translate(2px, -1px);
+    filter: hue-rotate(-60deg) contrast(1.2);
+    opacity: 0.9;
+  }
+  46% {
+    transform: translate(-1px, 2px);
+    filter: hue-rotate(60deg) contrast(1.25);
+    opacity: 0.88;
+  }
+  47% {
+    transform: translate(1px, -1px);
+    filter: hue-rotate(-30deg) contrast(1.15);
+    opacity: 0.93;
+  }
+  48% {
+    transform: translate(0, 0);
+    filter: hue-rotate(0deg) contrast(1);
+    opacity: 1;
+  }
+  82% {
+    transform: translate(0, 0);
+    filter: hue-rotate(0deg) contrast(1);
+    opacity: 1;
+  }
+  83% {
+    transform: translate(-2px, -2px) scale(1.05);
+    filter: hue-rotate(120deg) contrast(1.3) saturate(1.5);
+    opacity: 0.85;
+  }
+  84% {
+    transform: translate(3px, 1px) scale(0.98);
+    filter: hue-rotate(-120deg) contrast(1.35) saturate(1.6);
+    opacity: 0.82;
+  }
+  85% {
+    transform: translate(-1px, 2px) scale(1.02);
+    filter: hue-rotate(75deg) contrast(1.2) saturate(1.4);
+    opacity: 0.9;
+  }
+  86% {
+    transform: translate(0, 0);
+    filter: hue-rotate(0deg) contrast(1);
+    opacity: 1;
+  }
+}
+
+/* Token Icon Wrapper - RGB Split Effect */
+.token-icon-wrapper {
+  position: relative;
+}
+
+.token-icon-wrapper::before,
+.token-icon-wrapper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.token-icon-wrapper::before {
+  background: radial-gradient(
+    circle,
+    rgba(0, 255, 255, 0.3) 0%,
+    transparent 70%
+  );
+  animation: token-rgb-split-1 3s infinite;
+}
+
+.token-icon-wrapper::after {
+  background: radial-gradient(
+    circle,
+    rgba(255, 0, 255, 0.3) 0%,
+    transparent 70%
+  );
+  animation: token-rgb-split-2 3s infinite;
+}
+
+@keyframes token-rgb-split-1 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  9% {
+    transform: translate(-4px, 2px);
+    opacity: 0.6;
+  }
+  10% {
+    transform: translate(-3px, 3px);
+    opacity: 0.5;
+  }
+  11% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  45% {
+    transform: translate(3px, -2px);
+    opacity: 0.55;
+  }
+  46% {
+    transform: translate(2px, -3px);
+    opacity: 0.5;
+  }
+  47% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  83% {
+    transform: translate(-3px, -3px);
+    opacity: 0.7;
+  }
+  84% {
+    transform: translate(-2px, -4px);
+    opacity: 0.6;
+  }
+  85% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes token-rgb-split-2 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  9% {
+    transform: translate(4px, -2px);
+    opacity: 0.6;
+  }
+  10% {
+    transform: translate(3px, -3px);
+    opacity: 0.5;
+  }
+  11% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  45% {
+    transform: translate(-3px, 2px);
+    opacity: 0.55;
+  }
+  46% {
+    transform: translate(-2px, 3px);
+    opacity: 0.5;
+  }
+  47% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  83% {
+    transform: translate(3px, 3px);
+    opacity: 0.7;
+  }
+  84% {
+    transform: translate(2px, 4px);
+    opacity: 0.6;
+  }
+  85% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+}

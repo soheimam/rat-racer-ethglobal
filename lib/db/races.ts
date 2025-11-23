@@ -1,6 +1,7 @@
 import { generateId, getDb } from './client';
 import { RatsService } from './rats';
 import { Race, RaceEntry } from './types';
+import { getTokenByAddress, type Token } from '../tokens';
 
 export class RacesService {
     /**
@@ -324,6 +325,29 @@ export class RacesService {
             .toArray();
 
         return races;
+    }
+
+    /**
+     * Enrich race data with token information for display
+     * Adds token symbol, name, and logo to race object
+     */
+    static enrichRaceWithTokenInfo(race: Race): Race & { tokenInfo?: Token } {
+        if (!race.entryToken) {
+            return race;
+        }
+
+        const tokenInfo = getTokenByAddress(race.entryToken);
+        return {
+            ...race,
+            tokenInfo,
+        };
+    }
+
+    /**
+     * Enrich multiple races with token information
+     */
+    static enrichRacesWithTokenInfo(races: Race[]): Array<Race & { tokenInfo?: Token }> {
+        return races.map(race => this.enrichRaceWithTokenInfo(race));
     }
 }
 

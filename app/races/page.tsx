@@ -3,6 +3,8 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
+import { SUPPORTED_TOKENS } from '@/lib/tokens';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { formatUnits, parseUnits } from 'viem';
@@ -83,11 +85,11 @@ export default function RacesPage() {
     const [hoveredRace, setHoveredRace] = useState<string | null>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newEntryFee, setNewEntryFee] = useState('100');
+    const [selectedTokenAddress, setSelectedTokenAddress] = useState<`0x${string}` | ''>('');
 
     const RACE_MANAGER_ADDRESS = process.env.NEXT_PUBLIC_RACE_MANAGER_ADDRESS as `0x${string}`;
-    const RACE_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_RACE_TOKEN_ADDRESS as `0x${string}`;
 
-    const { writeContract: createRaceWrite, data: createRaceHash } = useWriteContract();
+    const { writeContract: createRaceWrite, data: createRaceHash, isPending: isWritePending } = useWriteContract();
     const { isLoading: isCreatingRace, isSuccess: raceCreated } = useWaitForTransactionReceipt({
         hash: createRaceHash,
     });
@@ -114,6 +116,10 @@ export default function RacesPage() {
     useEffect(() => {
         setMounted(true);
         fetchRaces();
+        // Set default selected token (RACE token)
+        if (SUPPORTED_TOKENS.length > 0 && !selectedTokenAddress) {
+            setSelectedTokenAddress(SUPPORTED_TOKENS[0].address);
+        }
         const interval = setInterval(fetchRaces, 10000);
         return () => clearInterval(interval);
     }, []);
@@ -178,13 +184,22 @@ export default function RacesPage() {
             return;
         }
 
+        if (!selectedTokenAddress || selectedTokenAddress === '0x0') {
+            toast({
+                title: 'NO TOKEN SELECTED',
+                description: 'Please select an entry token',
+                variant: 'destructive',
+            });
+            return;
+        }
+
         try {
             const entryFeeWei = parseUnits(newEntryFee, 18);
             createRaceWrite({
                 address: RACE_MANAGER_ADDRESS,
                 abi: RACE_MANAGER_ABI,
                 functionName: 'createRace',
-                args: [1, RACE_TOKEN_ADDRESS, entryFeeWei],
+                args: [1, selectedTokenAddress, entryFeeWei],
             });
         } catch (error: any) {
             console.error('Create race error:', error);
@@ -421,8 +436,54 @@ export default function RacesPage() {
                     </DialogHeader>
 
                     <div className="space-y-6">
+                        {/* Token Selection */}
                         <div>
-                            <label className="text-xs font-mono mb-2 block" style={{ color: '#718096' }}>ENTRY FEE (RACE TOKENS)</label>
+                            <label className="text-xs font-mono mb-2 block" style={{ color: '#718096' }}>ENTRY TOKEN</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                {SUPPORTED_TOKENS.map((token) => (
+                                    <button
+                                        key={token.address}
+                                        onClick={() => setSelectedTokenAddress(token.address)}
+                                        className="border-2 p-4 transition-all duration-300 hover:scale-105 relative overflow-hidden group"
+                                        style={{
+                                            backgroundColor: selectedTokenAddress === token.address ? '#2d3748' : '#000000',
+                                            borderColor: selectedTokenAddress === token.address ? '#cbd5e0' : '#4a5568',
+                                            boxShadow: selectedTokenAddress === token.address ? '0 0 20px rgba(203,213,224,0.3)' : 'none',
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-12 rounded-full overflow-hidden border-2" style={{ borderColor: '#4a5568' }}>
+                                                <Image
+                                                    src={token.logo}
+                                                    alt={token.symbol}
+                                                    width={48}
+                                                    height={48}
+                                                    className="object-cover"
+                                                />
+                                            </div>
+                                            <div className="text-left">
+                                                <div className="text-lg font-black" style={{ color: '#e2e8f0' }}>
+                                                    {token.symbol}
+                                                </div>
+                                                <div className="text-xs font-mono" style={{ color: '#718096' }}>
+                                                    {token.name}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {selectedTokenAddress === token.address && (
+                                            <div className="absolute top-2 right-2 w-3 h-3 rounded-full" style={{ backgroundColor: '#cbd5e0' }}></div>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-xs font-mono mt-2" style={{ color: '#718096' }}>// SELECT TOKEN FOR RACE ENTRY FEE</p>
+                        </div>
+
+                        {/* Entry Fee Input */}
+                        <div>
+                            <label className="text-xs font-mono mb-2 block" style={{ color: '#718096' }}>
+                                ENTRY FEE ({SUPPORTED_TOKENS.find(t => t.address === selectedTokenAddress)?.symbol || 'TOKENS'})
+                            </label>
                             <input
                                 type="number"
                                 value={newEntryFee}
@@ -460,17 +521,28 @@ export default function RacesPage() {
 
                         <Button
                             onClick={handleCreateRace}
-                            disabled={isCreatingRace || pollingForRace || !newEntryFee || parseFloat(newEntryFee) <= 0}
+                            disabled={isWritePending || isCreatingRace || pollingForRace || !newEntryFee || parseFloat(newEntryFee) <= 0}
                             className="glass-button w-full font-black py-6 text-xl disabled:opacity-50 border-2 transition-all duration-500"
                             style={{
                                 backgroundColor: '#2d3748',
                                 borderColor: '#4a5568',
                                 color: '#e2e8f0',
-                                boxShadow: !isCreatingRace && !pollingForRace ? '0 0 30px rgba(74,85,104,0.5)' : 'none',
-                                cursor: (isCreatingRace || pollingForRace) ? 'not-allowed' : 'pointer'
+                                boxShadow: !isWritePending && !isCreatingRace && !pollingForRace ? '0 0 30px rgba(74,85,104,0.5)' : 'none',
+                                cursor: (isWritePending || isCreatingRace || pollingForRace) ? 'not-allowed' : 'pointer'
                             }}
                         >
-                            {isCreatingRace ? (
+                            {isWritePending ? (
+                                <div className="industrial-loader">
+                                    <div className="industrial-loader-bars">
+                                        <div className="industrial-loader-bar"></div>
+                                        <div className="industrial-loader-bar"></div>
+                                        <div className="industrial-loader-bar"></div>
+                                        <div className="industrial-loader-bar"></div>
+                                        <div className="industrial-loader-bar"></div>
+                                    </div>
+                                    <span className="loading-text">CONFIRM IN WALLET</span>
+                                </div>
+                            ) : isCreatingRace ? (
                                 <div className="industrial-loader">
                                     <div className="industrial-loader-bars">
                                         <div className="industrial-loader-bar"></div>

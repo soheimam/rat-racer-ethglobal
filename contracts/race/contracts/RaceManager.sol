@@ -22,6 +22,9 @@ contract RaceManager is ReentrancyGuard {
     // Rat NFT contract
     IERC721 public immutable ratNFT;
 
+    // Approved ERC20 tokens for entry fees
+    mapping(address => bool) public approvedTokens;
+
     // Race states
     enum RaceStatus {
         Active, // Accepting entries
@@ -90,6 +93,8 @@ contract RaceManager is ReentrancyGuard {
         address indexed racer,
         uint256 amount
     );
+    event TokenApproved(address indexed token);
+    event TokenRemoved(address indexed token);
 
     constructor(address ratNFT_) {
         require(ratNFT_ != address(0), "Invalid rat NFT address");
@@ -108,9 +113,42 @@ contract RaceManager is ReentrancyGuard {
     }
 
     /**
+     * @notice Add a token to the approved list (only admin)
+     * @param token ERC20 token address to approve
+     */
+    function addApprovedToken(address token) external {
+        require(msg.sender == admin, "Only admin");
+        require(token != address(0), "Invalid token address");
+        require(!approvedTokens[token], "Token already approved");
+
+        approvedTokens[token] = true;
+        emit TokenApproved(token);
+    }
+
+    /**
+     * @notice Remove a token from the approved list (only admin)
+     * @param token ERC20 token address to remove
+     */
+    function removeApprovedToken(address token) external {
+        require(msg.sender == admin, "Only admin");
+        require(approvedTokens[token], "Token not approved");
+
+        approvedTokens[token] = false;
+        emit TokenRemoved(token);
+    }
+
+    /**
+     * @notice Check if a token is approved for races
+     * @param token ERC20 token address
+     */
+    function isTokenApproved(address token) external view returns (bool) {
+        return approvedTokens[token];
+    }
+
+    /**
      * @notice Create a new race
      * @param trackId Track ID for the race
-     * @param entryToken ERC20 token for entry fee
+     * @param entryToken ERC20 token for entry fee (must be approved)
      * @param entryFee Amount of tokens required to enter
      */
     function createRace(
@@ -120,6 +158,7 @@ contract RaceManager is ReentrancyGuard {
     ) external returns (uint256) {
         require(trackId > 0, "Invalid track ID");
         require(entryToken != address(0), "Invalid token address");
+        require(approvedTokens[entryToken], "Token not approved for races");
         require(entryFee > 0, "Entry fee must be > 0");
 
         uint256 raceId = _nextRaceId++;

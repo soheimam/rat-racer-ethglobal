@@ -7,7 +7,7 @@
 
 import { RacesService } from '@/lib/db';
 import { logger } from '@/lib/logger';
-import { RaceCancelledPayload } from '@/lib/types/webhook';
+import { ContractEvent, RaceCancelledPayload } from '@/lib/types/webhook';
 import { getRawBody, verifyWebhookSignature } from '@/lib/webhook-verify';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAddress } from 'viem';
@@ -60,9 +60,18 @@ export async function POST(req: NextRequest) {
 
         log.info('Received webhook payload', { payload });
 
-        if (payload.event_name !== 'RaceCancelled') {
-            log.warn('Invalid event type', { event: payload.event_name });
-            return NextResponse.json({ error: 'Invalid event type' }, { status: 400 });
+        // Validate event type - return 200 if it's not the expected event
+        if (payload.event_name !== ContractEvent.RACE_CANCELLED) {
+            log.info('Received unexpected event type, ignoring gracefully', {
+                received: payload.event_name,
+                expected: ContractEvent.RACE_CANCELLED,
+                txHash: payload.transaction_hash,
+            });
+            return NextResponse.json({
+                success: true,
+                skipped: true,
+                message: `This endpoint handles ${ContractEvent.RACE_CANCELLED} events only. Received: ${payload.event_name}`,
+            }, { status: 200 });
         }
 
         const { raceId, cancelledBy } = payload.parameters;

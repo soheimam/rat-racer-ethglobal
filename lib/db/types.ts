@@ -6,12 +6,13 @@ export interface Rat {
     tokenId: number; // NFT token ID from contract
     name: string;
     owner: string; // wallet address
-    modelIndex: number; // 1-6 for which model to use
+    modelIndex: number; // 0-2 for color-matched 3D model
     textureType: "baseColor" | "normal" | "metallicRoughness";
     imageUrl: string;
     stats: {
-        stamina: number; // 1-100
-        agility: number; // 1-100
+        stamina: number; // 50-100
+        agility: number; // 50-100
+        speed: number; // 50-100
         bloodline: string;
     };
     speeds: number[]; // 5 speed values for race segments
@@ -20,8 +21,16 @@ export interface Rat {
     wins: number;
     placed: number; // 2nd or 3rd place finishes
     losses: number;
-    level: number;
+    level: number; // 1-100
+    xp: number; // Current XP
     createdAt: string;
+    // Breeding fields (optional, future-proof for breeding feature)
+    generation?: number; // 0 = original mint, 1+ = bred
+    parent1TokenId?: number; // First parent token ID (if bred)
+    parent2TokenId?: number; // Second parent token ID (if bred)
+    isPurebreed?: boolean; // Same bloodline from both parents
+    breedingCount?: number; // How many times this rat has been bred
+    mutations?: string[]; // Special mutations from breeding (future)
 }
 
 export interface RaceEntry {

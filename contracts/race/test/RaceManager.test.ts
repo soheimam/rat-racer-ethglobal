@@ -8,7 +8,8 @@ describe("RaceManager - Complete Tests", function () {
         const [owner, creator, racer1, racer2, racer3, racer4, racer5, racer6, other] =
             await hre.viem.getWalletClients();
 
-        const raceToken = await hre.viem.deployContract("RaceToken", []);
+        // Use TestRaceToken for tests (has mint function)
+        const raceToken = await hre.viem.deployContract("TestRaceToken", []);
 
         const ratNFT = await hre.viem.deployContract("RatNFT", [
             "Street Racer Rat",
@@ -38,7 +39,7 @@ describe("RaceManager - Complete Tests", function () {
             // Mint rat NFT
             await ratNFT.write.mint([racers[i].account.address, i % 3], {
                 account: racers[i].account,
-            }); // imageIndex: 0=white, 1=brown, 2=pink
+            }); // imageIndex: 0=brown, 1=pink, 2=white
         }
 
         const entryFee = parseEther("100");
@@ -48,6 +49,11 @@ describe("RaceManager - Complete Tests", function () {
                 account: racer.account,
             });
         }
+
+        // Approve raceToken for use in races by default
+        await raceManager.write.addApprovedToken([raceToken.address], {
+            account: owner.account,
+        });
 
         return {
             ratNFT,
@@ -87,6 +93,83 @@ describe("RaceManager - Complete Tests", function () {
         });
     });
 
+    describe("Token Approval System", function () {
+        it("Should allow admin to approve tokens", async function () {
+            const { raceManager, owner } = await loadFixture(deployContractsFixture);
+
+            // Deploy a new token for testing
+            const newToken = await hre.viem.deployContract("TestRaceToken", []);
+
+            await raceManager.write.addApprovedToken([newToken.address], {
+                account: owner.account,
+            });
+
+            expect(await raceManager.read.isTokenApproved([newToken.address])).to.be.true;
+        });
+
+        it("Should reject non-admin approving tokens", async function () {
+            const { raceManager, other } = await loadFixture(deployContractsFixture);
+
+            const newToken = await hre.viem.deployContract("TestRaceToken", []);
+
+            await expect(
+                raceManager.write.addApprovedToken([newToken.address], {
+                    account: other.account,
+                })
+            ).to.be.rejectedWith("Only admin");
+        });
+
+        it("Should allow admin to remove approved tokens", async function () {
+            const { raceManager, owner } = await loadFixture(deployContractsFixture);
+
+            const newToken = await hre.viem.deployContract("TestRaceToken", []);
+
+            await raceManager.write.addApprovedToken([newToken.address], {
+                account: owner.account,
+            });
+            expect(await raceManager.read.isTokenApproved([newToken.address])).to.be.true;
+
+            await raceManager.write.removeApprovedToken([newToken.address], {
+                account: owner.account,
+            });
+            expect(await raceManager.read.isTokenApproved([newToken.address])).to.be.false;
+        });
+
+        it("Should reject removing non-approved tokens", async function () {
+            const { raceManager, owner } = await loadFixture(deployContractsFixture);
+
+            const newToken = await hre.viem.deployContract("TestRaceToken", []);
+
+            await expect(
+                raceManager.write.removeApprovedToken([newToken.address], {
+                    account: owner.account,
+                })
+            ).to.be.rejectedWith("Token not approved");
+        });
+
+        it("Should reject approving zero address", async function () {
+            const { raceManager, owner } = await loadFixture(deployContractsFixture);
+            const zeroAddress = "0x0000000000000000000000000000000000000000";
+
+            await expect(
+                raceManager.write.addApprovedToken([zeroAddress], {
+                    account: owner.account,
+                })
+            ).to.be.rejectedWith("Invalid token address");
+        });
+
+        it("Should reject approving already approved token", async function () {
+            const { raceManager, owner, raceToken } = await loadFixture(deployContractsFixture);
+
+            // raceToken is already approved in fixture
+            await expect(
+                raceManager.write.addApprovedToken([raceToken.address], {
+                    account: owner.account,
+                })
+            ).to.be.rejectedWith("Token already approved");
+        });
+    });
+
     describe("Race Creation", function () {
         it("Should create a race with valid parameters", async function () {
             const { raceManager, creator, raceToken, entryFee } = await loadFixture(
@@ -115,6 +198,20 @@ describe("RaceManager - Complete Tests", function () {
             expect(events).to.have.lengthOf(1);
             expect(events[0].args.raceId).to.equal(0n);
             expect(events[0].args.creator).to.equal(getAddress(creator.account.address));
+        });
+
+        it("Should revert with unapproved token", async function () {
+            const { raceManager, creator, entryFee } = await loadFixture(
+                deployContractsFixture
+            );
+
+            const unapprovedToken = "0x1111111111111111111111111111111111111111";
+
+            await expect(
+                raceManager.write.createRace([1, unapprovedToken, entryFee], {
+                    account: creator.account,
+                })
+            ).to.be.rejectedWith("Token not approved for races");
         });
 
         it("Should revert with invalid track ID", async function () {
@@ -414,11 +511,16 @@ describe("RaceManager - Complete Tests", function () {
     });
 
     describe("Multi-Token Support", function () {
-        it("Should work with any ERC20 token", async function () {
-            const { raceManager, creator, entryFee } =
+        it("Should work with any approved ERC20 token", async function () {
+            const { raceManager, owner, creator, entryFee } =
                 await loadFixture(deployContractsFixture);
 
-            const customToken = await hre.viem.deployContract("RaceToken", []);
+            const customToken = await hre.viem.deployContract("TestRaceToken", []);
+
+            // Approve the custom token
+            await raceManager.write.addApprovedToken([customToken.address], {
+                account: owner.account,
+            });
 
             await raceManager.write.createRace([1, customToken.address, entryFee], {
                 account: creator.account,
@@ -426,6 +528,20 @@ describe("RaceManager - Complete Tests", function () {
 
             const race = await raceManager.read.getRace([0n]);
             expect(race.entryToken).to.equal(getAddress(customToken.address));
+        });
+
+        it("Should reject unapproved tokens", async function () {
+            const { raceManager, creator, entryFee } =
+                await loadFixture(deployContractsFixture);
+
+            const unapprovedToken = await hre.viem.deployContract("TestRaceToken", []);
+
+            // Don't approve the token
+            await expect(
+                raceManager.write.createRace([1, unapprovedToken.address, entryFee], {
+                    account: creator.account,
+                })
+            ).to.be.rejectedWith("Token not approved for races");
         });
     });
 });

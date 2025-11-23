@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { mintRat } from '@/lib/contracts/mint-rat';
+import { getTokenByAddress } from '@/lib/tokens';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { formatUnits } from 'viem';
@@ -294,6 +296,28 @@ export default function ShopPage() {
                         <p className="text-sm font-mono tracking-widest" style={{ color: '#718096' }}>[ MINTING FACILITY // SECTOR 7 ]</p>
                     </div>
                     <div className="flex gap-4 items-center">
+                        {/* Get RACE Token Button */}
+                        <a
+                            href="https://app.uniswap.org/explore/tokens/base/0xea4eaca6e4197ecd092ba77b5da768f19287e06f?inputCurrency=NATIVE"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="glass-button font-mono font-black px-6 py-3 text-lg border-2 transition-all duration-300 hover:scale-105"
+                            style={{
+                                backgroundColor: '#2d3748',
+                                borderColor: '#cbd5e0',
+                                color: '#cbd5e0',
+                                boxShadow: '0 0 20px rgba(203,213,224,0.4)',
+                                textDecoration: 'none',
+                                display: 'inline-block'
+                            }}
+                        >
+                            <span className="flex items-center gap-3">
+                                <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#cbd5e0' }}></span>
+                                GET RACE
+                                <span className="text-xs" style={{ color: '#718096' }}>[UNISWAP]</span>
+                            </span>
+                        </a>
+
                         {!mounted ? (
                             <div className="glass-button font-mono font-black px-6 py-3 text-lg border-2"
                                 style={{
@@ -462,6 +486,42 @@ export default function ShopPage() {
                                                     backgroundImage: 'radial-gradient(circle at center, #4a5568, transparent)'
                                                 }}
                                             ></div>
+
+                                            {/* Token Icon with Glitch Effect */}
+                                            {config && (() => {
+                                                const tokenInfo = getTokenByAddress(config[0]);
+                                                return tokenInfo && (
+                                                    <div className="absolute bottom-6 left-6 z-20">
+                                                        <div className="token-glitch-container relative">
+                                                            <div className="token-icon-wrapper relative w-16 h-16 border-2 rounded-full overflow-hidden"
+                                                                style={{
+                                                                    borderColor: '#4a5568',
+                                                                    backgroundColor: '#000000',
+                                                                    boxShadow: '0 0 20px rgba(74,85,104,0.6)'
+                                                                }}>
+                                                                <Image
+                                                                    src={tokenInfo.logo}
+                                                                    alt={tokenInfo.symbol}
+                                                                    width={64}
+                                                                    height={64}
+                                                                    className="token-glitch w-full h-full object-cover"
+                                                                />
+                                                            </div>
+                                                            {/* Glitch Text */}
+                                                            <div className="absolute -bottom-5 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+                                                                <div className="text-xs font-black px-2 py-1" style={{
+                                                                    backgroundColor: '#1a202c',
+                                                                    color: '#cbd5e0',
+                                                                    border: '1px solid #4a5568'
+                                                                }}>
+                                                                    {tokenInfo.symbol}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+
                                             <img
                                                 src={rat.image}
                                                 alt={rat.name}

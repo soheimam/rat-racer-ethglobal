@@ -19,11 +19,27 @@ contract RatNFT is ERC721Enumerable, Ownable {
     uint256 private _nextTokenId;
     string private _baseTokenURI;
 
+    // Approved image variants (managed by owner)
+    mapping(uint256 => bool) public approvedImageIndex;
+
     /// @notice Emitted when a rat is minted
-    event RatMinted(address indexed to, uint256 indexed tokenId);
+    /// @param to Address that received the rat
+    /// @param tokenId ID of the minted rat
+    /// @param imageIndex Visual variant selected by minter
+    event RatMinted(
+        address indexed to,
+        uint256 indexed tokenId,
+        uint256 imageIndex
+    );
 
     /// @notice Emitted when base URI is updated
     event BaseURIUpdated(string newBaseURI);
+
+    /// @notice Emitted when an image variant is approved
+    event ImageIndexApproved(uint256 indexed imageIndex);
+
+    /// @notice Emitted when an image variant is removed
+    event ImageIndexRemoved(uint256 indexed imageIndex);
 
     constructor(
         string memory name,
@@ -32,44 +48,57 @@ contract RatNFT is ERC721Enumerable, Ownable {
     ) ERC721(name, symbol) Ownable(msg.sender) {
         _nextTokenId = 1;
         _baseTokenURI = baseTokenURI;
+
+        // Approve initial rat variants (0=brown, 1=pink, 2=white)
+        approvedImageIndex[0] = true;
+        approvedImageIndex[1] = true;
+        approvedImageIndex[2] = true;
     }
 
     /**
      * @notice Mint a new rat NFT
      * @param to Address to mint the rat to
+     * @param imageIndex Visual variant selected by user (must be approved)
      * @return tokenId The ID of the minted rat
      *
      * The minting process:
-     * 1. User calls mint() → pays gas
-     * 2. Contract mints NFT → emits RatMinted event
-     * 3. Webhook catches event → calls /api/rat-mint
-     * 4. API generates random stats/bloodline
-     * 5. API uploads metadata.json to Blob Storage
-     * 6. tokenURI(tokenId) returns the Blob Storage URL
+     * 1. User calls mint() → selects imageIndex from approved options
+     * 2. Contract validates imageIndex is approved
+     * 3. Contract mints NFT → emits RatMinted event with imageIndex
+     * 4. Webhook catches event → calls /api/rat-mint
+     * 5. API generates random stats/bloodline for chosen variant
+     * 6. API uploads metadata.json to Blob Storage
+     * 7. tokenURI(tokenId) returns the Blob Storage URL
      */
-    function mint(address to) external returns (uint256) {
+    function mint(address to, uint256 imageIndex) external returns (uint256) {
         require(to != address(0), "Cannot mint to zero address");
+        require(approvedImageIndex[imageIndex], "Image variant not approved");
 
         uint256 tokenId = _nextTokenId++;
         _safeMint(to, tokenId);
 
-        emit RatMinted(to, tokenId);
+        emit RatMinted(to, tokenId, imageIndex);
 
         return tokenId;
     }
 
     /**
-     * @notice Owner mint a single rat to a specific address (for testing)
+     * @notice Owner mint a single rat to a specific address (for testing/airdrops)
      * @param to Address to mint the rat to
+     * @param imageIndex Visual variant for the rat (must be approved)
      * @return tokenId The ID of the minted rat
      */
-    function ownerMint(address to) external onlyOwner returns (uint256) {
+    function ownerMint(
+        address to,
+        uint256 imageIndex
+    ) external onlyOwner returns (uint256) {
         require(to != address(0), "Cannot mint to zero address");
+        require(approvedImageIndex[imageIndex], "Image variant not approved");
 
         uint256 tokenId = _nextTokenId++;
         _safeMint(to, tokenId);
 
-        emit RatMinted(to, tokenId);
+        emit RatMinted(to, tokenId, imageIndex);
 
         return tokenId;
     }
@@ -78,16 +107,55 @@ contract RatNFT is ERC721Enumerable, Ownable {
      * @notice Batch mint multiple rats (for testing/airdrops)
      * @param to Address to mint rats to
      * @param amount Number of rats to mint
+     * @param imageIndex Visual variant for all rats (must be approved)
      */
-    function batchMint(address to, uint256 amount) external onlyOwner {
+    function batchMint(
+        address to,
+        uint256 amount,
+        uint256 imageIndex
+    ) external onlyOwner {
         require(to != address(0), "Cannot mint to zero address");
         require(amount > 0 && amount <= 20, "Amount must be 1-20");
+        require(approvedImageIndex[imageIndex], "Image variant not approved");
 
         for (uint256 i = 0; i < amount; i++) {
             uint256 tokenId = _nextTokenId++;
             _safeMint(to, tokenId);
-            emit RatMinted(to, tokenId);
+            emit RatMinted(to, tokenId, imageIndex);
         }
+    }
+
+    /**
+     * @notice Add a new approved image variant
+     * @param imageIndex The image variant to approve
+     */
+    function addApprovedImageIndex(uint256 imageIndex) external onlyOwner {
+        require(
+            !approvedImageIndex[imageIndex],
+            "Image variant already approved"
+        );
+        approvedImageIndex[imageIndex] = true;
+        emit ImageIndexApproved(imageIndex);
+    }
+
+    /**
+     * @notice Remove an approved image variant
+     * @param imageIndex The image variant to remove
+     */
+    function removeApprovedImageIndex(uint256 imageIndex) external onlyOwner {
+        require(approvedImageIndex[imageIndex], "Image variant not approved");
+        approvedImageIndex[imageIndex] = false;
+        emit ImageIndexRemoved(imageIndex);
+    }
+
+    /**
+     * @notice Check if an image variant is approved
+     * @param imageIndex The image variant to check
+     */
+    function isImageIndexApproved(
+        uint256 imageIndex
+    ) external view returns (bool) {
+        return approvedImageIndex[imageIndex];
     }
 
     /**

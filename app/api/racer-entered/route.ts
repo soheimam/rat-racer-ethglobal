@@ -7,7 +7,7 @@
 
 import { RacesService } from '@/lib/db';
 import { logger } from '@/lib/logger';
-import { RacerEnteredPayload } from '@/lib/types/webhook';
+import { ContractEvent, RacerEnteredPayload } from '@/lib/types/webhook';
 import { getRawBody, verifyWebhookSignature } from '@/lib/webhook-verify';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAddress } from 'viem';
@@ -60,9 +60,18 @@ export async function POST(req: NextRequest) {
 
         log.info('Received webhook payload', { payload });
 
-        if (payload.event_name !== 'RacerEntered') {
-            log.warn('Invalid event type', { event: payload.event_name });
-            return NextResponse.json({ error: 'Invalid event type' }, { status: 400 });
+        // Validate event type - return 200 if it's not the expected event
+        if (payload.event_name !== ContractEvent.RACER_ENTERED) {
+            log.info('Received unexpected event type, ignoring gracefully', {
+                received: payload.event_name,
+                expected: ContractEvent.RACER_ENTERED,
+                txHash: payload.transaction_hash,
+            });
+            return NextResponse.json({
+                success: true,
+                skipped: true,
+                message: `This endpoint handles ${ContractEvent.RACER_ENTERED} events only. Received: ${payload.event_name}`,
+            }, { status: 200 });
         }
 
         const { raceId, racer, ratTokenId } = payload.parameters;

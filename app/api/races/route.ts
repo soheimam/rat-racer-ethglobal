@@ -14,10 +14,14 @@ export async function GET() {
             RacesService.getCompletedRaces(10), // Get last 10 completed races
         ]);
 
+        // Enrich races with token information for display
+        const enrichedActiveRaces = RacesService.enrichRacesWithTokenInfo(activeRaces);
+        const enrichedCompletedRaces = RacesService.enrichRacesWithTokenInfo(completedRaces);
+
         return NextResponse.json({
             success: true,
-            activeRaces,
-            completedRaces,
+            activeRaces: enrichedActiveRaces,
+            completedRaces: enrichedCompletedRaces,
         });
     } catch (error: any) {
         console.error('Failed to fetch races:', error);

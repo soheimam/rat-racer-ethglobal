@@ -1,18 +1,19 @@
 /**
  * API Route: /api/rat-mint
  * 
- * Triggered by: RatMinted event from RatNFT contract
+ * Triggered by: RatMinted event from RatNFT contract (Transfer from 0x0)
  * Purpose: Generate random metadata, upload to Vercel Blob, store in MongoDB
+ * 
+ * Image Index Mapping: 0=brown, 1=pink, 2=white
  */
 
 import { RatsService, WalletsService } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import {
-    calculateRarityScore,
     generateRatMetadata,
     type RatMetadata
 } from '@/lib/metadata-generator';
-import { RatMintedPayload } from '@/lib/types/webhook';
+import { ContractEvent, RatMintedPayload } from '@/lib/types/webhook';
 import { getRawBody, verifyWebhookSignature } from '@/lib/webhook-verify';
 import { put } from '@vercel/blob';
 import { NextRequest, NextResponse } from 'next/server';
@@ -22,6 +23,9 @@ const BLOB_READ_WRITE_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 const BLOB_BASE_URL = process.env.BLOB_BASE_URL;
 const NEXT_PUBLIC_URL = process.env.NEXT_PUBLIC_URL;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
+
+// Image index to color mapping (matches metadata-generator.ts)
+const RAT_COLORS = ['brown', 'pink', 'white'];
 
 export async function POST(request: NextRequest) {
     const startTime = Date.now();
@@ -69,22 +73,41 @@ export async function POST(request: NextRequest) {
 
         logger.logWebhookPayload('RatMinted', payload);
 
+        // Validate event type - return 200 if it's not the expected event
+        if (!payload.event_name || payload.event_name !== ContractEvent.RAT_MINTED) {
+            log.info('Received unexpected event type, ignoring gracefully', {
+                received: payload.event_name,
+                expected: ContractEvent.RAT_MINTED,
+                txHash: payload.transaction_hash,
+            });
+            return NextResponse.json({
+                success: true,
+                skipped: true,
+                message: `This endpoint handles ${ContractEvent.RAT_MINTED} events only. Received: ${payload.event_name}`,
+            }, { status: 200 });
+        }
+
         log.info('Processing rat mint event', {
             event: payload.event_name,
             tokenId: payload.parameters.tokenId,
             owner: payload.parameters.to,
             imageIndex: payload.parameters.imageIndex,
+            color: RAT_COLORS[Number(payload.parameters.imageIndex)] || 'unknown',
             txHash: payload.transaction_hash,
         });
 
-        if (!payload.event_name || payload.event_name !== 'RatMinted') {
-            log.warn('Invalid event type', { event: payload.event_name });
-            return NextResponse.json({ error: 'Invalid event type' }, { status: 400 });
-        }
-
         const { to: owner, tokenId, imageIndex } = payload.parameters;
         const ownerAddress = getAddress(owner);
-        const selectedImageIndex = Number(imageIndex); // 0=white, 1=brown, 2=pink
+        const selectedImageIndex = Number(imageIndex); // 0=brown, 1=pink, 2=white
+
+        // Validate imageIndex
+        if (isNaN(selectedImageIndex) || selectedImageIndex < 0 || selectedImageIndex > 2) {
+            log.error(`Invalid imageIndex: ${imageIndex}, selectedImageIndex: ${selectedImageIndex}, tokenId: ${tokenId}`);
+            return NextResponse.json(
+                { error: 'Invalid imageIndex', message: 'imageIndex must be 0 (brown), 1 (pink), or 2 (white)' },
+                { status: 400 }
+            );
+        }
 
         // Idempotency check: If rat already exists, return success (webhook retry/duplicate)
         try {
@@ -113,13 +136,8 @@ export async function POST(request: NextRequest) {
             log.info('Rat does not exist, proceeding with mint', { tokenId });
         }
 
-        // Map imageIndex to color name  
-        const imageNames = ['white', 'brown', 'pink'];
-        const selectedImage = imageNames[selectedImageIndex];
-
-        // Generate random metadata
-        const metadata: RatMetadata = generateRatMetadata(Number(tokenId), ownerAddress, selectedImage);
-        const rarityScore = calculateRarityScore(metadata);
+        // Generate random metadata (imageIndex: 0=brown, 1=pink, 2=white)
+        const metadata: RatMetadata = generateRatMetadata(Number(tokenId), ownerAddress, selectedImageIndex);
 
         log.info('Generated rat metadata', {
             tokenId,
@@ -128,7 +146,7 @@ export async function POST(request: NextRequest) {
             modelIndex: metadata.properties.modelIndex,
             bloodline: metadata.properties.stats.bloodline,
             imageUrl: metadata.image,
-            rarityScore,
+            powerRating: metadata.properties.powerRating,
         });
 
         // Upload to Vercel Blob
@@ -173,6 +191,7 @@ export async function POST(request: NextRequest) {
             stats: {
                 stamina: metadata.properties.stats.stamina,
                 agility: metadata.properties.stats.agility,
+                speed: metadata.properties.stats.speed,
                 bloodline: metadata.properties.stats.bloodline,
             },
             speeds: metadata.properties.speeds,
@@ -182,6 +201,14 @@ export async function POST(request: NextRequest) {
             placed: 0,
             losses: 0,
             level: 1,
+            xp: 0,
+            // Breeding info (optional, future-proof)
+            generation: metadata.properties.breeding?.generation,
+            parent1TokenId: metadata.properties.breeding?.parent1TokenId,
+            parent2TokenId: metadata.properties.breeding?.parent2TokenId,
+            isPurebreed: metadata.properties.breeding?.isPurebreed,
+            breedingCount: metadata.properties.breeding?.breedingCount,
+            mutations: metadata.properties.breeding?.mutations,
         });
 
         log.info('Stored rat in MongoDB', { ratId: rat.id });
@@ -198,7 +225,8 @@ export async function POST(request: NextRequest) {
             rat: {
                 id: rat.id,
                 name: metadata.name,
-                rarityScore,
+                bloodline: metadata.properties.stats.bloodline,
+                powerRating: metadata.properties.powerRating,
                 metadataUrl,
             },
         });

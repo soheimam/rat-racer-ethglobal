@@ -20,6 +20,20 @@
  * }
  */
 
+/**
+ * Enum for all supported contract events
+ * Used for type-safe event validation in webhook handlers
+ */
+export enum ContractEvent {
+    RAT_MINTED = 'RatMinted',
+    TRANSFER = 'Transfer',
+    RACE_CREATED = 'RaceCreated',
+    RACER_ENTERED = 'RacerEntered',
+    RACE_STARTED = 'RaceStarted',
+    RACE_FINISHED = 'RaceFinished',
+    RACE_CANCELLED = 'RaceCancelled',
+}
+
 export interface BaseWebhookPayload {
     block_number: number;
     contract_address: string;
@@ -88,10 +102,20 @@ export interface RaceCancelledPayload extends BaseWebhookPayload {
     };
 }
 
+export interface TransferPayload extends BaseWebhookPayload {
+    event_name: 'Transfer';
+    parameters: {
+        from: string;
+        to: string;
+        tokenId: string;
+    };
+}
+
 export type WebhookPayload =
     | RatMintedPayload
     | RaceCreatedPayload
     | RacerEnteredPayload
     | RaceStartedPayload
     | RaceFinishedPayload
-    | RaceCancelledPayload;
+    | RaceCancelledPayload
+    | TransferPayload;
