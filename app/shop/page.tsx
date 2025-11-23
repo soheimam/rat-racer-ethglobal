@@ -86,12 +86,13 @@ export default function ShopPage() {
         }
     };
 
-    // Contract addresses from environment variables
-    const RAT_NFT_ADDRESS = process.env.NEXT_PUBLIC_RAT_NFT_ADDRESS as `0x${string}`;
+    // Contract addresses - UPDATE YOUR .ENV FILE!
+    const RAT_NFT_ADDRESS = (process.env.NEXT_PUBLIC_RAT_NFT_ADDRESS || '0x38f66760ada4c01bc5a4a7370882f0aee7090674') as `0x${string}`;
+    const RACE_TOKEN_ADDRESS = (process.env.NEXT_PUBLIC_RACE_TOKEN_ADDRESS || '0xea4eaca6e4197ecd092ba77b5da768f19287e06f') as `0x${string}`;
 
     const RAT_CONFIG_ABI = [
         {
-            inputs: [{ name: 'imageIndex', type: 'uint8' }],
+            inputs: [{ name: 'imageIndex', type: 'uint256' }],
             name: 'getRatConfig',
             outputs: [
                 { name: 'paymentToken', type: 'address' },
@@ -124,24 +125,34 @@ export default function ShopPage() {
         address: RAT_NFT_ADDRESS,
         abi: RAT_CONFIG_ABI,
         functionName: 'getRatConfig',
-        args: [0]
+        args: [BigInt(0)]
     });
 
     const { data: rat1Config } = useReadContract({
         address: RAT_NFT_ADDRESS,
         abi: RAT_CONFIG_ABI,
         functionName: 'getRatConfig',
-        args: [1]
+        args: [BigInt(1)]
     });
 
     const { data: rat2Config } = useReadContract({
         address: RAT_NFT_ADDRESS,
         abi: RAT_CONFIG_ABI,
         functionName: 'getRatConfig',
-        args: [2]
+        args: [BigInt(2)]
     });
 
     const ratConfigs = [rat0Config, rat1Config, rat2Config];
+
+    // Debug logging
+    useEffect(() => {
+        console.log('Rat Configs:', {
+            rat0: rat0Config,
+            rat1: rat1Config,
+            rat2: rat2Config,
+            ratNFTAddress: RAT_NFT_ADDRESS
+        });
+    }, [rat0Config, rat1Config, rat2Config]);
 
     // Get token symbols for all payment tokens
     const { data: token0Symbol } = useReadContract({
@@ -167,11 +178,32 @@ export default function ShopPage() {
 
     const tokenSymbols = [token0Symbol, token1Symbol, token2Symbol];
 
+    // Debug token symbols
+    useEffect(() => {
+        console.log('Token Symbols:', {
+            token0Symbol,
+            token1Symbol,
+            token2Symbol
+        });
+    }, [token0Symbol, token1Symbol, token2Symbol]);
+
     // Get selected rat data
     const selectedRatConfig = selectedRat !== null ? ratConfigs[selectedRat] : undefined;
     const paymentTokenAddress = selectedRatConfig?.[0] as `0x${string}` | undefined;
     const mintPrice = selectedRatConfig?.[1] as bigint | undefined;
     const selectedTokenSymbol = selectedRat !== null ? tokenSymbols[selectedRat] : undefined;
+
+    // Always read RACE token balance
+    const { data: raceBalance } = useReadContract({
+        address: RACE_TOKEN_ADDRESS,
+        abi: TOKEN_ABI,
+        functionName: 'balanceOf',
+        args: address ? [address] : undefined,
+        query: {
+            enabled: !!address,
+            refetchInterval: false,
+        }
+    });
 
     // Read balance of the payment token for selected rat
     const { data: tokenBalance, refetch: refetchBalance, isLoading: isLoadingBalance } = useReadContract({
@@ -328,6 +360,32 @@ export default function ShopPage() {
                         <p className="text-sm font-mono tracking-widest" style={{ color: '#718096' }}>{'[ MINTING FACILITY // SECTOR 7 ]'}</p>
                     </div>
                     <div className="flex gap-4 items-center">
+                        {/* RACE Balance Display */}
+                        {mounted && isConnected && (
+                            <div className="px-4 py-2 border flex items-center gap-3"
+                                style={{
+                                    backgroundColor: 'rgba(26,32,44,0.8)',
+                                    borderColor: '#4a5568',
+                                    backdropFilter: 'blur(10px)'
+                                }}>
+                                <Image
+                                    src="/race.png"
+                                    alt="RACE"
+                                    width={24}
+                                    height={24}
+                                    className="w-6 h-6 rounded-full"
+                                />
+                                <div className="text-right">
+                                    <div className="text-[10px] font-mono tracking-wider" style={{ color: '#718096' }}>
+                                        RACE BALANCE
+                                    </div>
+                                    <div className="text-sm font-mono font-black" style={{ color: '#cbd5e0' }}>
+                                        {raceBalance ? formatTokenAmount(formatUnits(raceBalance as bigint, 18)) : '0'}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Get RACE Token Button */}
                         <a
                             href="https://app.uniswap.org/explore/tokens/base/0xea4eaca6e4197ecd092ba77b5da768f19287e06f?inputCurrency=NATIVE"

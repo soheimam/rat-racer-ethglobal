@@ -1,14 +1,47 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 
 export default function WalletButton() {
   const { address, isConnected } = useAccount();
   const { connect, connectors, isPending } = useConnect();
   const { disconnect } = useDisconnect();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const walletConnected = isConnected;
   const userAddress = address; // Cryptographically verified
+
+  // Prevent hydration mismatch
+  if (!mounted) {
+    return (
+      <button
+        disabled
+        className="relative px-8 py-4 font-mono font-black tracking-wider transition-all duration-300 overflow-hidden group bg-black disabled:opacity-50 disabled:cursor-not-allowed"
+        style={{
+          color: '#a0aec0'
+        }}
+      >
+        <div
+          className="absolute inset-0 opacity-70 transition-opacity duration-300"
+          style={{
+            background: 'linear-gradient(to right, #cbd5e0, #4a5568)',
+            padding: '1px',
+            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+            WebkitMaskComposite: 'xor',
+            maskComposite: 'exclude',
+          }}
+        />
+        <span className="relative z-10">
+          LOADING...
+        </span>
+      </button>
+    );
+  }
 
   if (walletConnected && userAddress) {
     return (
@@ -57,7 +90,7 @@ export default function WalletButton() {
       }}
       disabled={isPending || !connectors.length}
       className="relative px-8 py-4 font-mono font-black tracking-wider transition-all duration-300 overflow-hidden group bg-black hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
-      style={{ 
+      style={{
         color: '#a0aec0'
       }}
     >
