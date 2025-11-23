@@ -1,6 +1,5 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { mintRat } from '@/lib/contracts/mint-rat';
@@ -65,6 +64,11 @@ export default function ShopPage() {
     const [pollingForRat, setPollingForRat] = useState(false);
     const [hoveredRat, setHoveredRat] = useState<number | null>(null);
     const [mounted, setMounted] = useState(false);
+
+    // Prevent hydration mismatch
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // Contract addresses from environment variables
     const RAT_NFT_ADDRESS = process.env.NEXT_PUBLIC_RAT_NFT_ADDRESS as `0x${string}`;
@@ -293,7 +297,7 @@ export default function ShopPage() {
                             }}>
                             RAT UNDERGROUND
                         </h1>
-                        <p className="text-sm font-mono tracking-widest" style={{ color: '#718096' }}>[ MINTING FACILITY // SECTOR 7 ]</p>
+                        <p className="text-sm font-mono tracking-widest" style={{ color: '#718096' }}>{'[ MINTING FACILITY // SECTOR 7 ]'}</p>
                     </div>
                     <div className="flex gap-4 items-center">
                         {/* Get RACE Token Button */}
@@ -301,25 +305,58 @@ export default function ShopPage() {
                             href="https://app.uniswap.org/explore/tokens/base/0xea4eaca6e4197ecd092ba77b5da768f19287e06f?inputCurrency=NATIVE"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="glass-button font-mono font-black px-6 py-3 text-lg border-2 transition-all duration-300 hover:scale-105"
+                            className="group relative transition-all duration-300 hover:scale-105"
                             style={{
-                                backgroundColor: '#2d3748',
-                                borderColor: '#cbd5e0',
-                                color: '#cbd5e0',
-                                boxShadow: '0 0 20px rgba(203,213,224,0.4)',
                                 textDecoration: 'none',
                                 display: 'inline-block'
                             }}
                         >
-                            <span className="flex items-center gap-3">
-                                <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#cbd5e0' }}></span>
-                                GET RACE
-                                <span className="text-xs" style={{ color: '#718096' }}>[UNISWAP]</span>
-                            </span>
+                            <div className="flex items-center gap-2 px-4 py-2 border relative overflow-hidden"
+                                style={{
+                                    backgroundColor: 'rgba(45,55,72,0.5)',
+                                    borderColor: '#4a5568',
+                                    backdropFilter: 'blur(10px)'
+                                }}>
+                                {/* Glitching RACE Logo */}
+                                <div className="token-glitch-container relative">
+                                    <div className="token-icon-wrapper relative w-8 h-8 rounded-full overflow-hidden border"
+                                        style={{
+                                            borderColor: '#4a5568',
+                                            backgroundColor: '#000000'
+                                        }}>
+                                        <Image
+                                            src="/race.png"
+                                            alt="RACE"
+                                            width={32}
+                                            height={32}
+                                            className="token-glitch w-full h-full object-cover"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Text */}
+                                <div className="flex flex-col">
+                                    <span className="text-xs font-mono font-black tracking-wider group-hover:text-white transition-colors duration-300"
+                                        style={{ color: '#cbd5e0' }}>
+                                        GET RACE
+                                    </span>
+                                    <span className="text-[10px] font-mono opacity-60"
+                                        style={{ color: '#718096' }}>
+                                        UNISWAP
+                                    </span>
+                                </div>
+
+                                {/* Hover glow */}
+                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                                    style={{
+                                        background: 'radial-gradient(circle at center, rgba(203,213,224,0.1), transparent)',
+                                    }}
+                                />
+                            </div>
                         </a>
 
                         {!mounted ? (
-                            <div className="glass-button font-mono font-black px-6 py-3 text-lg border-2"
+                            <div className="glass-button font-mono font-black px-6 py-3 text-lg border"
                                 style={{
                                     backgroundColor: '#2d3748',
                                     borderColor: '#4a5568',
@@ -330,7 +367,7 @@ export default function ShopPage() {
                                 LOADING...
                             </div>
                         ) : !isConnected ? (
-                            <Button
+                            <button
                                 onClick={() => {
                                     const connector = connectors[0];
                                     if (connector) {
@@ -338,16 +375,27 @@ export default function ShopPage() {
                                     }
                                 }}
                                 disabled={isPending || !connectors.length}
-                                className="glass-button font-mono font-black px-6 py-3 text-lg border-2 disabled:opacity-50"
+                                className="relative px-8 py-4 font-mono font-black tracking-wider transition-all duration-300 overflow-hidden group hover:scale-[1.02] disabled:opacity-50"
                                 style={{
-                                    backgroundColor: '#2d3748',
-                                    borderColor: '#4a5568',
-                                    color: '#e2e8f0',
-                                    boxShadow: '0 0 15px rgba(74,85,104,0.3)'
+                                    background: 'linear-gradient(to bottom right, rgba(26,32,44,0.8), #000000)',
+                                    color: '#cbd5e0',
+                                    animation: !isPending ? 'subtle-glow 3s ease-in-out infinite' : 'none'
                                 }}
                             >
-                                {isPending ? 'CONNECTING...' : '[!] CONNECT WALLET'}
-                            </Button>
+                                <div
+                                    className="absolute inset-0 opacity-70 group-hover:opacity-100 transition-opacity duration-300"
+                                    style={{
+                                        background: 'linear-gradient(to bottom, #cbd5e0, #4a5568)',
+                                        padding: '1px',
+                                        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                                        WebkitMaskComposite: 'xor',
+                                        maskComposite: 'exclude',
+                                    }}
+                                />
+                                <span className="relative z-10 group-hover:text-white transition-colors duration-300">
+                                    {isPending ? 'CONNECTING...' : '[!] CONNECT WALLET'}
+                                </span>
+                            </button>
                         ) : (
                             <div className="text-right">
                                 <div className="text-xs font-mono mb-1" style={{ color: '#718096' }}>CONNECTED</div>
@@ -357,15 +405,33 @@ export default function ShopPage() {
                             </div>
                         )}
                         <Link href="/">
-                            <Button variant="outline" className="glass-button border-gray-600 font-mono" style={{ color: '#a0aec0' }}>
-                                &lt; EXIT
-                            </Button>
+                            <button
+                                className="relative px-6 py-3 font-mono font-black tracking-wider transition-all duration-300 overflow-hidden group hover:scale-[1.02] bg-black"
+                                style={{
+                                    color: '#a0aec0',
+                                    animation: 'subtle-pulse 5s ease-in-out infinite'
+                                }}
+                            >
+                                <div
+                                    className="absolute inset-0"
+                                    style={{
+                                        background: 'linear-gradient(to right, #cbd5e0, #4a5568)',
+                                        padding: '1px',
+                                        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                                        WebkitMaskComposite: 'xor',
+                                        maskComposite: 'exclude',
+                                    }}
+                                />
+                                <span className="relative z-10 group-hover:text-white transition-colors duration-300">
+                                    &lt; EXIT
+                                </span>
+                            </button>
                         </Link>
                     </div>
                 </div>
 
                 {/* Info Panel */}
-                <div className="mb-12 p-6 border-2 relative" style={{
+                <div className="mb-12 p-6 border relative" style={{
                     background: 'linear-gradient(to right, rgba(45,55,72,0.2), rgba(26,32,44,0.2))',
                     borderColor: '#4a5568'
                 }}>
@@ -376,11 +442,15 @@ export default function ShopPage() {
                                 {selectedRat !== null && mintPrice ? formatUnits(mintPrice, 18) : '...'} {selectedTokenSymbol || 'TOKENS'}
                             </div>
                             <div className="text-sm font-mono" style={{ color: '#718096' }}>
-                                {selectedRat !== null ? `// ${RAT_RACERS[selectedRat].name} MINT COST` : '// SELECT A RACER'}
+                                {selectedRat !== null ? `${'// '}${RAT_RACERS[selectedRat].name} MINT COST` : '// SELECT A RACER'}
                             </div>
                         </div>
                         <div>
-                            {!isConnected ? (
+                            {!mounted ? (
+                                <div className="font-mono text-sm" style={{ color: '#718096' }}>
+                                    [?] LOADING...
+                                </div>
+                            ) : !isConnected ? (
                                 <div className="font-mono text-sm animate-pulse" style={{ color: '#718096' }}>
                                     [!] WALLET NOT CONNECTED
                                 </div>
@@ -442,7 +512,7 @@ export default function ShopPage() {
 
                                     {/* Card */}
                                     <div
-                                        className="relative bg-black border-4 overflow-hidden transition-all duration-300"
+                                        className="relative bg-black border-2 overflow-hidden transition-all duration-300"
                                         style={{
                                             borderColor: isSelected ? '#cbd5e0' : '#2d3748',
                                             boxShadow: isSelected ? '0 0 25px rgba(160,174,192,0.3)' : 'none'
@@ -451,9 +521,11 @@ export default function ShopPage() {
                                         {/* Selected Indicator */}
                                         {isSelected && (
                                             <div className="absolute top-4 left-4 z-10">
-                                                <div className="px-3 py-1 text-xs font-black animate-pulse" style={{
-                                                    backgroundColor: '#4a5568',
-                                                    color: '#e2e8f0'
+                                                <div className="px-3 py-1 text-xs font-black border animate-pulse" style={{
+                                                    backgroundColor: '#2d3748',
+                                                    borderColor: '#10b981',
+                                                    color: '#10b981',
+                                                    boxShadow: '0 0 15px rgba(16,185,129,0.3)'
                                                 }}>
                                                     SELECTED
                                                 </div>
@@ -462,7 +534,7 @@ export default function ShopPage() {
 
                                         {/* Price Badge */}
                                         <div className="absolute top-4 right-4 z-10">
-                                            <div className="px-3 py-2 text-sm font-black border-2"
+                                            <div className="px-3 py-2 text-sm font-black border"
                                                 style={{
                                                     backgroundColor: '#2d3748',
                                                     borderColor: '#4a5568',
@@ -539,7 +611,7 @@ export default function ShopPage() {
                                                 {rat.name}
                                             </div>
                                             <div className="text-sm font-mono mb-4" style={{ color: '#718096' }}>
-                                                // {rat.tagline}
+                                                {'// '}{rat.tagline}
                                             </div>
 
                                             {/* Stats Preview */}
@@ -567,48 +639,76 @@ export default function ShopPage() {
 
                 {/* Mint Button */}
                 <div className="flex justify-center">
-                    <Button
+                    <button
                         onClick={handleMint}
                         disabled={minting || selectedRat === null || !isConnected}
-                        className="glass-button relative px-16 py-8 text-2xl font-black tracking-wider disabled:opacity-50"
+                        className="relative px-16 py-6 font-mono font-black text-2xl tracking-wider transition-all duration-500 overflow-hidden group hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{
                             background: selectedRat !== null
-                                ? 'linear-gradient(135deg, #4a5568, #1a202c)'
+                                ? 'linear-gradient(to bottom right, #2d3748, #000000)'
                                 : 'linear-gradient(135deg, #2d3748, #1a1a1a)',
-                            border: '3px solid',
-                            borderColor: selectedRat !== null ? '#718096' : '#4a5568',
-                            color: '#e2e8f0',
-                            boxShadow: selectedRat !== null && !minting
-                                ? '0 0 25px rgba(160,174,192,0.3)'
-                                : 'none',
+                            color: '#cbd5e0',
+                            cursor: minting || selectedRat === null || !isConnected ? 'not-allowed' : 'pointer'
                         }}
                     >
-                        {minting ? (
-                            <div className="industrial-loader">
-                                <div className="industrial-loader-bars">
-                                    <div className="industrial-loader-bar"></div>
-                                    <div className="industrial-loader-bar"></div>
-                                    <div className="industrial-loader-bar"></div>
-                                    <div className="industrial-loader-bar"></div>
-                                    <div className="industrial-loader-bar"></div>
-                                </div>
-                                <span className="loading-text">MINTING</span>
-                            </div>
-                        ) : selectedRat === null ? (
-                            'SELECT A RACER'
-                        ) : (
-                            `MINT ${RAT_RACERS[selectedRat].name}`
+                        {/* Animated gradient border */}
+                        <div
+                            className="absolute inset-0"
+                            style={{
+                                backgroundImage: selectedRat !== null
+                                    ? 'linear-gradient(45deg, #cbd5e0 0%, #718096 25%, #4a5568 50%, #718096 75%, #cbd5e0 100%)'
+                                    : 'linear-gradient(to right, #4a5568, #2d3748)',
+                                backgroundSize: '200% 200%',
+                                padding: '1.5px',
+                                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                                WebkitMaskComposite: 'xor',
+                                maskComposite: 'exclude',
+                                animation: selectedRat !== null && !minting ? 'gradient-shift 3s ease infinite' : 'none'
+                            }}
+                        />
+                        {/* Shine effect on hover */}
+                        {!minting && selectedRat !== null && (
+                            <div
+                                className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-700"
+                                style={{
+                                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)',
+                                    transform: 'translateX(-100%)',
+                                }}
+                            />
                         )}
-                    </Button>
+                        <span className="relative z-10 flex items-center gap-4 group-hover:text-white transition-colors duration-300">
+                            {minting ? (
+                                <div className="industrial-loader">
+                                    <div className="industrial-loader-bars">
+                                        <div className="industrial-loader-bar"></div>
+                                        <div className="industrial-loader-bar"></div>
+                                        <div className="industrial-loader-bar"></div>
+                                        <div className="industrial-loader-bar"></div>
+                                        <div className="industrial-loader-bar"></div>
+                                    </div>
+                                    <span className="loading-text">MINTING</span>
+                                </div>
+                            ) : selectedRat === null ? (
+                                'SELECT A RACER'
+                            ) : (
+                                <>
+                                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                                    </svg>
+                                    {`MINT ${RAT_RACERS[selectedRat].name}`}
+                                </>
+                            )}
+                        </span>
+                    </button>
                 </div>
             </div>
 
             {/* Success Modal */}
             <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-                <DialogContent className="bg-black border-4 text-white max-w-3xl"
+                <DialogContent className="bg-black border-2 text-white max-w-3xl"
                     style={{ borderColor: '#4a5568', boxShadow: '0 0 40px rgba(74,85,104,0.3)' }}>
                     <DialogHeader>
-                        <DialogTitle className="text-4xl font-black text-center mb-4" style={{ fontFamily: 'monospace', color: '#cbd5e0' }}>
+                        <DialogTitle className="text-4xl font-black text-center mb-4 glitch" data-text="[ RACER MINTED ]" style={{ fontFamily: 'monospace', color: '#cbd5e0' }}>
                             [ RACER MINTED ]
                         </DialogTitle>
                     </DialogHeader>
@@ -619,12 +719,12 @@ export default function ShopPage() {
                                 <div className="absolute inset-0 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#4a5568' }}></div>
                                 <div className="absolute inset-2 border-4 border-b-transparent rounded-full animate-spin-slow" style={{ borderColor: '#718096' }}></div>
                             </div>
-                            <p className="font-mono animate-pulse" style={{ color: '#a0aec0' }}>// GENERATING RACER STATS...</p>
+                            <p className="font-mono animate-pulse" style={{ color: '#a0aec0' }}>{'// GENERATING RACER STATS...'}</p>
                         </div>
                     ) : mintedRat ? (
                         <div className="space-y-6">
                             <div className="flex gap-6">
-                                <div className="w-64 h-64 border-4 flex items-center justify-center overflow-hidden shrink-0" style={{
+                                <div className="w-64 h-64 border-2 flex items-center justify-center overflow-hidden shrink-0" style={{
                                     background: 'linear-gradient(to bottom right, #1a202c, #000000)',
                                     borderColor: '#4a5568'
                                 }}>
@@ -643,19 +743,19 @@ export default function ShopPage() {
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
-                                        <div className="bg-black/50 border-2 p-3" style={{ borderColor: '#4a5568' }}>
+                                        <div className="bg-black/50 border p-3" style={{ borderColor: '#4a5568' }}>
                                             <div className="text-xs font-mono mb-1" style={{ color: '#718096' }}>BLOODLINE</div>
                                             <div className="text-lg font-bold" style={{ color: '#a0aec0' }}>{mintedRat.stats.bloodline}</div>
                                         </div>
-                                        <div className="bg-black/50 border-2 p-3" style={{ borderColor: '#4a5568' }}>
+                                        <div className="bg-black/50 border p-3" style={{ borderColor: '#4a5568' }}>
                                             <div className="text-xs font-mono mb-1" style={{ color: '#718096' }}>RARITY</div>
                                             <div className="text-lg font-bold" style={{ color: '#a0aec0' }}>{mintedRat.rarityScore.toFixed(1)}</div>
                                         </div>
-                                        <div className="bg-black/50 border-2 p-3" style={{ borderColor: '#4a5568' }}>
+                                        <div className="bg-black/50 border p-3" style={{ borderColor: '#4a5568' }}>
                                             <div className="text-xs font-mono mb-1" style={{ color: '#718096' }}>STAMINA</div>
                                             <div className="text-2xl font-black" style={{ color: '#cbd5e0' }}>{mintedRat.stats.stamina}</div>
                                         </div>
-                                        <div className="bg-black/50 border-2 p-3" style={{ borderColor: '#4a5568' }}>
+                                        <div className="bg-black/50 border p-3" style={{ borderColor: '#4a5568' }}>
                                             <div className="text-xs font-mono mb-1" style={{ color: '#718096' }}>AGILITY</div>
                                             <div className="text-2xl font-black" style={{ color: '#cbd5e0' }}>{mintedRat.stats.agility}</div>
                                         </div>
@@ -663,11 +763,11 @@ export default function ShopPage() {
                                 </div>
                             </div>
 
-                            <div className="border-2 p-4" style={{
+                            <div className="border p-4" style={{
                                 background: 'linear-gradient(to right, #1a202c, #000000)',
                                 borderColor: '#4a5568'
                             }}>
-                                <div className="text-xs font-mono mb-2" style={{ color: '#a0aec0' }}>[ SPEED DISTRIBUTION // 5 SEGMENTS ]</div>
+                                <div className="text-xs font-mono mb-2" style={{ color: '#a0aec0' }}>{'[ SPEED DISTRIBUTION // 5 SEGMENTS ]'}</div>
                                 <div className="grid grid-cols-5 gap-2">
                                     {mintedRat.speeds.map((speed, i) => (
                                         <div key={i} className="bg-black border p-2 text-center" style={{ borderColor: '#4a5568' }}>
@@ -679,34 +779,112 @@ export default function ShopPage() {
                             </div>
 
                             <div className="flex gap-3">
-                                <Button
+                                <button
                                     onClick={() => setShowSuccessModal(false)}
-                                    variant="outline"
-                                    className="flex-1 border-2 font-mono"
-                                    style={{ borderColor: '#4a5568', color: '#a0aec0' }}
+                                    className="relative flex-1 px-6 py-3 font-mono font-black tracking-wider transition-all duration-300 overflow-hidden group hover:scale-[1.02] bg-black"
+                                    style={{ color: '#a0aec0' }}
                                 >
-                                    [ CLOSE ]
-                                </Button>
+                                    <div
+                                        className="absolute inset-0"
+                                        style={{
+                                            background: 'linear-gradient(to right, #cbd5e0, #4a5568)',
+                                            padding: '1px',
+                                            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                                            WebkitMaskComposite: 'xor',
+                                            maskComposite: 'exclude',
+                                        }}
+                                    />
+                                    <span className="relative z-10 group-hover:text-white transition-colors duration-300">
+                                        [ CLOSE ]
+                                    </span>
+                                </button>
                                 <Link href="/my-rats" className="flex-1">
-                                    <Button className="w-full font-black" style={{
-                                        backgroundColor: '#2d3748',
-                                        color: '#e2e8f0'
-                                    }}>
-                                        VIEW ALL RACERS &gt;
-                                    </Button>
+                                    <button
+                                        className="relative w-full px-6 py-3 font-mono font-black tracking-wider transition-all duration-300 overflow-hidden group hover:scale-[1.02]"
+                                        style={{
+                                            background: 'linear-gradient(to bottom right, rgba(26,32,44,0.8), #000000)',
+                                            color: '#cbd5e0',
+                                            animation: 'subtle-glow 3s ease-in-out infinite'
+                                        }}
+                                    >
+                                        <div
+                                            className="absolute inset-0 opacity-70 group-hover:opacity-100 transition-opacity duration-300"
+                                            style={{
+                                                background: 'linear-gradient(to bottom, #cbd5e0, #4a5568)',
+                                                padding: '1px',
+                                                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                                                WebkitMaskComposite: 'xor',
+                                                maskComposite: 'exclude',
+                                            }}
+                                        />
+                                        <span className="relative z-10 group-hover:text-white transition-colors duration-300">
+                                            VIEW ALL RACERS &gt;
+                                        </span>
+                                    </button>
                                 </Link>
                             </div>
                         </div>
                     ) : (
                         <div className="text-center py-8">
-                            <p className="font-mono mb-4" style={{ color: '#718096' }}>// RACER PROCESSING...</p>
+                            <p className="font-mono mb-4" style={{ color: '#718096' }}>{'// RACER PROCESSING...'}</p>
                             <Link href="/my-rats">
-                                <Button style={{ backgroundColor: '#2d3748', color: '#e2e8f0' }}>CHECK ROSTER</Button>
+                                <button
+                                    className="relative px-8 py-4 font-mono font-black tracking-wider transition-all duration-300 overflow-hidden group hover:scale-[1.02]"
+                                    style={{
+                                        background: 'linear-gradient(to bottom right, rgba(26,32,44,0.8), #000000)',
+                                        color: '#cbd5e0',
+                                        animation: 'subtle-glow 3s ease-in-out infinite'
+                                    }}
+                                >
+                                    <div
+                                        className="absolute inset-0 opacity-70 group-hover:opacity-100 transition-opacity duration-300"
+                                        style={{
+                                            background: 'linear-gradient(to bottom, #cbd5e0, #4a5568)',
+                                            padding: '1px',
+                                            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                                            WebkitMaskComposite: 'xor',
+                                            maskComposite: 'exclude',
+                                        }}
+                                    />
+                                    <span className="relative z-10 group-hover:text-white transition-colors duration-300">
+                                        CHECK ROSTER
+                                    </span>
+                                </button>
                             </Link>
                         </div>
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* CSS Animations */}
+            <style jsx>{`
+                @keyframes gradient-shift {
+                    0%, 100% {
+                        background-position: 0% 50%;
+                    }
+                    50% {
+                        background-position: 100% 50%;
+                    }
+                }
+
+                @keyframes subtle-glow {
+                    0%, 100% {
+                        box-shadow: 0 0 5px rgba(74, 85, 104, 0.2);
+                    }
+                    50% {
+                        box-shadow: 0 0 15px rgba(74, 85, 104, 0.4);
+                    }
+                }
+
+                @keyframes subtle-pulse {
+                    0%, 100% {
+                        opacity: 1;
+                    }
+                    50% {
+                        opacity: 0.9;
+                    }
+                }
+            `}</style>
         </div>
     );
 }

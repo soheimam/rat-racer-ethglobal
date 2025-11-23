@@ -53,7 +53,13 @@ contract RaceManager is ReentrancyGuard {
         address racer;
         uint256 ratTokenId;
         uint256 enteredAt;
-        uint8 position; // Final position (1-6), 0 if not finished
+        uint8 position; // Final position (1-6), 0 if not set
+    }
+
+    // Claimable prizes per race per racer
+    struct ClaimableEntry {
+        uint256 amount;
+        bool claimed;
     }
 
     // Storage
@@ -63,6 +69,8 @@ contract RaceManager is ReentrancyGuard {
     mapping(uint256 => mapping(address => bool)) public hasEntered; // raceId => racer => entered
     mapping(uint256 => mapping(uint256 => bool)) public ratInRace; // raceId => ratTokenId => inRace
     mapping(uint256 => bool) public ratIsRacing; // ratTokenId => is currently in an active race
+    mapping(uint256 => mapping(address => ClaimableEntry))
+        public claimablePrizes; // raceId => racer => prize
 
     // Admin address
     address public admin;
@@ -81,7 +89,7 @@ contract RaceManager is ReentrancyGuard {
         uint256 indexed ratTokenId
     );
     event RaceStarted(uint256 indexed raceId, address indexed startedBy);
-    event RaceFinished(
+    event RaceResultsRecorded(
         uint256 indexed raceId,
         uint256[] winningRatTokenIds,
         address[] winners,
@@ -329,15 +337,17 @@ contract RaceManager is ReentrancyGuard {
     }
 
     /**
-     * @notice Finish a race and distribute prizes
-     * @param raceId Race to finish
+     * @notice Record race results and set claimable prizes (called by backend after deterministic simulation)
+     * @param raceId Race to record results for
      * @param winningRatTokenIds Array of rat token IDs in finishing order (1st, 2nd, 3rd, etc.)
-     * @dev Can be called by anyone with the race results - trustless since results are verifiable
+     * @dev Only callable by admin after race starts - results are deterministic based on rat stats
      */
-    function finishRace(
+    function recordRaceResults(
         uint256 raceId,
         uint256[] calldata winningRatTokenIds
     ) external nonReentrant {
+        require(msg.sender == admin, "Only admin can record results");
+
         Race storage race = races[raceId];
 
         require(race.status == RaceStatus.Started, "Race not started");
@@ -346,7 +356,7 @@ contract RaceManager is ReentrancyGuard {
             "Must provide all positions"
         );
 
-        // Verify all rats are valid entries
+        // Verify all rats are valid entries and set positions
         RacerEntry[] storage entries = raceEntries[raceId];
         for (uint256 i = 0; i < winningRatTokenIds.length; i++) {
             bool found = false;
@@ -364,15 +374,15 @@ contract RaceManager is ReentrancyGuard {
         race.status = RaceStatus.Finished;
         race.finishedAt = block.timestamp;
 
-        // Calculate and distribute prizes
-        _distributePrizes(raceId);
+        // Calculate prizes and set claimable amounts
+        _setClaimablePrizes(raceId);
 
         // Release rats from race
         for (uint256 i = 0; i < entries.length; i++) {
             ratIsRacing[entries[i].ratTokenId] = false;
         }
 
-        // Emit event
+        // Emit event with winners and prizes
         address[] memory winners = new address[](MAX_RACERS);
         uint256[] memory prizes = new uint256[](MAX_RACERS);
         for (uint256 i = 0; i < MAX_RACERS; i++) {
@@ -385,20 +395,23 @@ contract RaceManager is ReentrancyGuard {
             }
         }
 
-        emit RaceFinished(raceId, winningRatTokenIds, winners, prizes);
+        emit RaceResultsRecorded(raceId, winningRatTokenIds, winners, prizes);
     }
 
     /**
-     * @notice Distribute prizes after race completion
+     * @notice Set claimable prizes for all racers after race completion
      * @param raceId Race ID
      */
-    function _distributePrizes(uint256 raceId) private {
+    function _setClaimablePrizes(uint256 raceId) private {
         Race storage race = races[raceId];
 
-        // Creator fee (10%)
+        // Creator fee (10%) - immediately claimable
         uint256 creatorFee = (race.prizePool * CREATOR_FEE_PERCENT) /
             PERCENT_DENOMINATOR;
-        race.entryToken.safeTransfer(race.creator, creatorFee);
+        claimablePrizes[raceId][race.creator] = ClaimableEntry({
+            amount: claimablePrizes[raceId][race.creator].amount + creatorFee,
+            claimed: false
+        });
 
         // Remaining prize pool (90%)
         uint256 remainingPool = race.prizePool - creatorFee;
@@ -416,11 +429,48 @@ contract RaceManager is ReentrancyGuard {
                 uint256 prize = (remainingPool *
                     prizeShares[entries[i].position - 1]) / 100;
                 if (prize > 0) {
-                    race.entryToken.safeTransfer(entries[i].racer, prize);
-                    emit PrizeClaimed(raceId, entries[i].racer, prize);
+                    claimablePrizes[raceId][entries[i].racer] = ClaimableEntry({
+                        amount: claimablePrizes[raceId][entries[i].racer]
+                            .amount + prize,
+                        claimed: false
+                    });
                 }
             }
         }
+    }
+
+    /**
+     * @notice Claim prize from a finished race
+     * @param raceId Race ID to claim prize from
+     */
+    function claimPrize(uint256 raceId) external nonReentrant {
+        Race storage race = races[raceId];
+        require(race.status == RaceStatus.Finished, "Race not finished");
+
+        ClaimableEntry storage claimable = claimablePrizes[raceId][msg.sender];
+        require(claimable.amount > 0, "No prize to claim");
+        require(!claimable.claimed, "Prize already claimed");
+
+        uint256 prize = claimable.amount;
+        claimable.claimed = true;
+        claimable.amount = 0;
+
+        race.entryToken.safeTransfer(msg.sender, prize);
+
+        emit PrizeClaimed(raceId, msg.sender, prize);
+    }
+
+    /**
+     * @notice Get claimable prize for a racer in a race
+     * @param raceId Race ID
+     * @param racer Racer address
+     */
+    function getClaimablePrize(
+        uint256 raceId,
+        address racer
+    ) external view returns (uint256 amount, bool claimed) {
+        ClaimableEntry storage claimable = claimablePrizes[raceId][racer];
+        return (claimable.amount, claimable.claimed);
     }
 
     /**

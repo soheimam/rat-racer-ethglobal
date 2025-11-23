@@ -1,8 +1,9 @@
 /**
  * API Route: /api/race-finished
  * 
- * Triggered by: RaceFinished event from RaceManager contract
- * Purpose: Update final race stats in MongoDB
+ * Triggered by: RaceResultsRecorded event from RaceManager contract
+ * Purpose: Update final race stats in MongoDB after results are recorded on-chain
+ * Note: Prizes are NOT distributed here - users claim them via claimPrize()
  */
 
 import { RatsService, WalletsService } from '@/lib/db';
@@ -61,17 +62,18 @@ export async function POST(request: NextRequest) {
 
         logger.logWebhookPayload('RaceFinished', payload);
 
-        // Validate event type - return 200 if it's not the expected event
-        if (payload.event_name !== ContractEvent.RACE_FINISHED) {
+        // Validate event type - accept both RACE_FINISHED and RaceResultsRecorded
+        const validEvents = [ContractEvent.RACE_FINISHED, 'RaceResultsRecorded'];
+        if (!validEvents.includes(payload.event_name)) {
             log.info('Received unexpected event type, ignoring gracefully', {
                 received: payload.event_name,
-                expected: ContractEvent.RACE_FINISHED,
+                expected: validEvents,
                 txHash: payload.transaction_hash,
             });
             return NextResponse.json({
                 success: true,
                 skipped: true,
-                message: `This endpoint handles ${ContractEvent.RACE_FINISHED} events only. Received: ${payload.event_name}`,
+                message: `This endpoint handles ${validEvents.join(' or ')} events only. Received: ${payload.event_name}`,
             }, { status: 200 });
         }
 
@@ -183,12 +185,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             success: true,
             raceId,
-            message: 'Race settlement confirmed',
+            message: 'Race results recorded - prizes are claimable on-chain',
             prizes: prizes.map((prize, i) => ({
                 position: i + 1,
                 winner: winners[i],
                 ratTokenId: winningRatTokenIds[i],
-                prize,
+                prizeAmount: prize,
+                claimable: true,
             })),
             raceResults, // Include XP gains and level ups
         });

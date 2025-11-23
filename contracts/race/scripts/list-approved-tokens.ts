@@ -11,6 +11,7 @@ import hre from "hardhat";
 const BASE_TOKENS: Record<string, string> = {
     'RACE': '0xea4eaca6e4197ecd092ba77b5da768f19287e06f',
     'USDC': '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // Native USDC on Base
+    'MCADE': '0xc48823ec67720a04a9dfd8c7d109b2c3d6622094', // Metacade on Base
 };
 
 async function main() {

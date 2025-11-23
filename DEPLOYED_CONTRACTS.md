@@ -4,8 +4,8 @@
 
 ```
 RaceToken:   0xea4eaca6e4197ecd092ba77b5da768f19287e06f
-RatNFT:      0x1b69409a885acddc68a9873da2dc32d42f29604f
-RaceManager: 0x847af80afceda2ecfd95dd72c3f76d200fca433d
+RatNFT:      0x38f66760ada4c01bc5a4a7370882f0aee7090674 (with payment functionality)
+RaceManager: 0x58d4a6d4420488bb098b066edbf50ff9445ef0f7
 ```
 
 ## 🎫 RaceToken (ERC20)
@@ -23,31 +23,31 @@ RaceManager: 0x847af80afceda2ecfd95dd72c3f76d200fca433d
 
 ## 🐀 RatNFT (ERC721)
 
-**Address:** `0x1b69409a885acddc68a9873da2dc32d42f29604f`
+**Address:** `0x38f66760ada4c01bc5a4a7370882f0aee7090674`
 
 - **Name:** Rat Racer
 - **Symbol:** RAT
 - **Type:** ERC721Enumerable
 - **Owner:** `0x584cb34c3d52Bf59219e4e836FeaF63D4F90c830`
+- **Payment:** Supports ERC20 payment per rat variant
 
-### Approved Image Variants
+### Approved Image Variants & Pricing
 
 Users can mint rats with these image variants:
 
-- **Index 0** - Brown rat
-- **Index 1** - Pink rat
-- **Index 2** - White rat
+- **Index 0** - Ghost (White) - **1000 RACE**
+- **Index 1** - Mudslide (Brown) - **1000 RACE**
+- **Index 2** - Neon (Pink) - **1000 RACE**
 
-More variants can be added by the owner using:
-
-```bash
-IMAGE_INDEX=3 npx hardhat run scripts/manage-image-variants.ts --network base
-```
+More variants can be added and configured by the owner.
 
 ### Minting
 
 ```solidity
-// Mint with approved imageIndex
+// 1. Approve RACE token spending
+IERC20(raceToken).approve(ratNFT, 1000 * 10**18);
+
+// 2. Mint rat (payment deducted automatically)
 ratNFT.mint(to, imageIndex)
 ```
 
@@ -63,9 +63,9 @@ The webhook listens for this event and generates metadata off-chain.
 
 ## 🏁 RaceManager
 
-**Address:** `0x847af80afceda2ecfd95dd72c3f76d200fca433d`
+**Address:** `0x58d4a6d4420488bb098b066edbf50ff9445ef0f7`
 
-- **RatNFT:** `0x1b69409a885acddc68a9873da2dc32d42f29604f`
+- **RatNFT:** `0x38f66760ada4c01bc5a4a7370882f0aee7090674`
 - **Admin:** `0x584cb34c3d52Bf59219e4e836FeaF63D4F90c830`
 - **Max Racers:** 6 per race
 - **Creator Fee:** 10% of prize pool
@@ -74,10 +74,11 @@ The webhook listens for this event and generates metadata off-chain.
 
 Users can create races with these tokens:
 
-| Token    | Address                                      | Details                          |
-| -------- | -------------------------------------------- | -------------------------------- |
-| **RACE** | `0xea4eaca6e4197ecd092ba77b5da768f19287e06f` | Native game token (18 decimals)  |
-| **USDC** | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | Native USDC on Base (6 decimals) |
+| Token     | Address                                      | Details                          |
+| --------- | -------------------------------------------- | -------------------------------- |
+| **RACE**  | `0xea4eaca6e4197ecd092ba77b5da768f19287e06f` | Native game token (18 decimals)  |
+| **USDC**  | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | Native USDC on Base (6 decimals) |
+| **MCADE** | `0xc48823ec67720a04a9dfd8c7d109b2c3d6622094` | Metacade token (18 decimals)     |
 
 ### Creating a Race
 

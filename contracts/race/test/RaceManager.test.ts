@@ -15,8 +15,6 @@ describe("RaceManager - Complete Tests", function () {
             "Street Racer Rat",
             "RAT",
             "https://test.com/rats/",
-            raceToken.address,
-            parseUnits("100", 18), // 100 RACE per mint
         ]);
 
         const raceManager = await hre.viem.deployContract("RaceManager", [
@@ -26,17 +24,24 @@ describe("RaceManager - Complete Tests", function () {
         const publicClient = await hre.viem.getPublicClient();
 
         const racers = [racer1, racer2, racer3, racer4, racer5, racer6];
+
+        // Configure rat minting (1000 RACE for all variants)
+        const mintPrice = parseUnits("1000", 18);
+        for (let i = 0; i < 3; i++) {
+            await ratNFT.write.setRatConfig([BigInt(i), raceToken.address, mintPrice]);
+        }
+
         // Mint RACE tokens to racers and approve + mint rats
         for (let i = 0; i < racers.length; i++) {
-            // Give racer 1000 RACE tokens
-            await raceToken.write.mint([racers[i].account.address, parseUnits("1000", 18)]);
+            // Give racer 2000 RACE tokens (1000 for mint + extra for races)
+            await raceToken.write.mint([racers[i].account.address, parseUnits("2000", 18)]);
 
-            // Approve RatNFT to spend 100 RACE
-            await raceToken.write.approve([ratNFT.address, parseUnits("100", 18)], {
+            // Approve RatNFT to spend RACE for minting
+            await raceToken.write.approve([ratNFT.address, mintPrice], {
                 account: racers[i].account,
             });
 
-            // Mint rat NFT
+            // Mint rat NFT (costs 1000 RACE)
             await ratNFT.write.mint([racers[i].account.address, i % 3], {
                 account: racers[i].account,
             }); // imageIndex: 0=brown, 1=pink, 2=white
@@ -348,19 +353,19 @@ describe("RaceManager - Complete Tests", function () {
         }
 
         it("Should allow anyone to finish race", async function () {
-            const { raceManager, other } = await loadFixture(startedRaceFixture);
+            const { raceManager, owner, other } = await loadFixture(startedRaceFixture);
 
             const winningOrder = [1n, 2n, 3n, 4n, 5n, 6n];
-            await raceManager.write.finishRace([0n, winningOrder], {
-                account: other.account,
+            await raceManager.write.recordRaceResults([0n, winningOrder], {
+                account: owner.account,
             });
 
             const race = await raceManager.read.getRace([0n]);
             expect(race.status).to.equal(3); // Finished
         });
 
-        it("Should distribute prizes correctly (50/30/20)", async function () {
-            const { raceManager, creator, racers, raceToken, entryFee } =
+        it("Should set claimable prizes correctly (50/30/20)", async function () {
+            const { raceManager, owner, creator, racers, raceToken, entryFee } =
                 await loadFixture(startedRaceFixture);
 
             const totalPool = entryFee * 6n;
@@ -368,40 +373,100 @@ describe("RaceManager - Complete Tests", function () {
             const remainingPool = totalPool - creatorFee;
 
             const expectedPrizes = [
-                (remainingPool * 50n) / 100n,
-                (remainingPool * 30n) / 100n,
-                (remainingPool * 20n) / 100n,
+                (remainingPool * 50n) / 100n, // 1st place
+                (remainingPool * 30n) / 100n, // 2nd place
+                (remainingPool * 20n) / 100n, // 3rd place
             ];
 
-            const balancesBefore = await Promise.all(
-                racers.slice(0, 3).map((r) => raceToken.read.balanceOf([r.account.address]))
-            );
-
             const winningOrder = [1n, 2n, 3n, 4n, 5n, 6n];
-            await raceManager.write.finishRace([0n, winningOrder], {
-                account: racers[0].account,
+            await raceManager.write.recordRaceResults([0n, winningOrder], {
+                account: owner.account,
             });
 
-            const balancesAfter = await Promise.all(
-                racers.slice(0, 3).map((r) => raceToken.read.balanceOf([r.account.address]))
-            );
-
+            // Check claimable amounts
             for (let i = 0; i < 3; i++) {
-                expect(balancesAfter[i] - balancesBefore[i]).to.equal(expectedPrizes[i]);
+                const [amount, claimed] = await raceManager.read.getClaimablePrize([
+                    0n,
+                    racers[i].account.address,
+                ]);
+                expect(amount).to.equal(expectedPrizes[i]);
+                expect(claimed).to.be.false;
             }
+
+            // Check creator fee is claimable
+            const [creatorAmount, creatorClaimed] = await raceManager.read.getClaimablePrize([
+                0n,
+                creator.account.address,
+            ]);
+            expect(creatorAmount).to.equal(creatorFee);
+            expect(creatorClaimed).to.be.false;
         });
 
         it("Should release rats after race finishes", async function () {
-            const { raceManager, racers } = await loadFixture(startedRaceFixture);
+            const { raceManager, owner, racers } = await loadFixture(startedRaceFixture);
 
             expect(await raceManager.read.isRatRacing([1n])).to.be.true;
 
             const winningOrder = [1n, 2n, 3n, 4n, 5n, 6n];
-            await raceManager.write.finishRace([0n, winningOrder], {
-                account: racers[0].account,
+            await raceManager.write.recordRaceResults([0n, winningOrder], {
+                account: owner.account,
             });
 
             expect(await raceManager.read.isRatRacing([1n])).to.be.false;
+        });
+
+        it("Should allow winners to claim prizes", async function () {
+            const { raceManager, owner, racers, raceToken, entryFee } =
+                await loadFixture(startedRaceFixture);
+
+            const totalPool = entryFee * 6n;
+            const creatorFee = (totalPool * 10n) / 100n;
+            const remainingPool = totalPool - creatorFee;
+            const firstPrize = (remainingPool * 50n) / 100n;
+
+            const winningOrder = [1n, 2n, 3n, 4n, 5n, 6n];
+            await raceManager.write.recordRaceResults([0n, winningOrder], {
+                account: owner.account,
+            });
+
+            // Winner claims prize
+            const balanceBefore = await raceToken.read.balanceOf([racers[0].account.address]);
+
+            await raceManager.write.claimPrize([0n], {
+                account: racers[0].account,
+            });
+
+            const balanceAfter = await raceToken.read.balanceOf([racers[0].account.address]);
+            expect(balanceAfter - balanceBefore).to.equal(firstPrize);
+
+            // Check claimed status
+            const [amount, claimed] = await raceManager.read.getClaimablePrize([
+                0n,
+                racers[0].account.address,
+            ]);
+            expect(amount).to.equal(0n);
+            expect(claimed).to.be.true;
+        });
+
+        it("Should prevent double claiming", async function () {
+            const { raceManager, owner, racers } = await loadFixture(startedRaceFixture);
+
+            const winningOrder = [1n, 2n, 3n, 4n, 5n, 6n];
+            await raceManager.write.recordRaceResults([0n, winningOrder], {
+                account: owner.account,
+            });
+
+            // Claim once
+            await raceManager.write.claimPrize([0n], {
+                account: racers[0].account,
+            });
+
+            // Try to claim again - should fail with "No prize to claim"
+            await expect(
+                raceManager.write.claimPrize([0n], {
+                    account: racers[0].account,
+                })
+            ).to.be.rejectedWith("No prize to claim");
         });
     });
 
@@ -479,7 +544,7 @@ describe("RaceManager - Complete Tests", function () {
         });
 
         it("Should allow rat to enter new race after previous finishes", async function () {
-            const { raceManager, creator, racers, racer1, raceToken, entryFee } =
+            const { raceManager, owner, creator, racers, racer1, raceToken, entryFee } =
                 await loadFixture(deployContractsFixture);
 
             await raceManager.write.createRace([1, raceToken.address, entryFee], {
@@ -495,8 +560,8 @@ describe("RaceManager - Complete Tests", function () {
             await raceManager.write.startRace([0n], { account: racers[0].account });
 
             const winningOrder = [1n, 2n, 3n, 4n, 5n, 6n];
-            await raceManager.write.finishRace([0n, winningOrder], {
-                account: racers[0].account,
+            await raceManager.write.recordRaceResults([0n, winningOrder], {
+                account: owner.account,
             });
 
             expect(await raceManager.read.isRatRacing([1n])).to.be.false;
