@@ -84,7 +84,7 @@ export default function Navigation() {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden relative p-2 border-2 transition-colors duration-300"
+              className="md:hidden relative p-2 border transition-colors duration-300 hover:border-[#718096]"
               style={{
                 borderColor: '#4a5568',
                 color: '#cbd5e0'
@@ -111,7 +111,7 @@ export default function Navigation() {
           onClick={() => setIsMobileMenuOpen(false)}
         >
           <div 
-            className="absolute top-16 left-0 right-0 border-b-2"
+            className="absolute top-16 left-0 right-0 border-b"
             style={{ 
               borderColor: '#2d3748',
               background: 'linear-gradient(to bottom, #000000, #0a0a0a)'
@@ -122,14 +122,15 @@ export default function Navigation() {
               {navLinks.map((link) => (
                 <Link key={link.href} href={link.href} onClick={() => setIsMobileMenuOpen(false)}>
                   <button
-                    className={`w-full relative px-6 py-4 font-mono font-black tracking-wider transition-all duration-300 overflow-hidden group ${
+                    className={`w-full relative px-6 py-4 font-mono font-black tracking-wider transition-all duration-300 overflow-hidden group hover:scale-[1.02] ${
                       isActive(link.href) ? 'scale-[1.02]' : ''
                     }`}
                     style={{
                       background: isActive(link.href)
                         ? 'linear-gradient(to bottom right, rgba(26,32,44,0.8), #000000)'
                         : 'linear-gradient(to right, #1a202c, #000000)',
-                      color: '#cbd5e0'
+                      color: '#cbd5e0',
+                      animation: isActive(link.href) ? 'subtle-glow 3s ease-in-out infinite' : 'none'
                     }}
                   >
                     <div
@@ -152,7 +153,7 @@ export default function Navigation() {
               ))}
               
               {/* Wallet Button in Mobile */}
-              <div className="pt-4 border-t-2" style={{ borderColor: '#2d3748' }}>
+              <div className="pt-4 border-t" style={{ borderColor: '#2d3748' }}>
                 <WalletButton />
               </div>
             </div>
@@ -162,6 +163,15 @@ export default function Navigation() {
 
       {/* CSS Animations */}
       <style jsx>{`
+        @keyframes subtle-glow {
+          0%, 100% {
+            box-shadow: 0 0 5px rgba(74, 85, 104, 0.2);
+          }
+          50% {
+            box-shadow: 0 0 15px rgba(74, 85, 104, 0.4);
+          }
+        }
+
         .glitch {
           position: relative;
         }

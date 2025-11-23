@@ -1,12 +1,11 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { formatUnits, parseUnits } from 'viem';
-import { useAccount, useConnect, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 
 interface RaceEntry {
     address?: string;
@@ -63,19 +62,8 @@ const RACE_MANAGER_ABI = [
     },
 ] as const;
 
-const TOKEN_ABI = [
-    {
-        inputs: [],
-        name: 'symbol',
-        outputs: [{ name: '', type: 'string' }],
-        stateMutability: 'view',
-        type: 'function'
-    }
-] as const;
-
 export default function RacesPage() {
     const { address, isConnected } = useAccount();
-    const { connect, connectors, isPending } = useConnect();
     const { toast } = useToast();
     const [activeRaces, setActiveRaces] = useState<Race[]>([]);
     const [completedRaces, setCompletedRaces] = useState<Race[]>([]);
@@ -92,8 +80,6 @@ export default function RacesPage() {
         hash: createRaceHash,
     });
     const [pollingForRace, setPollingForRace] = useState(false);
-    const [createdRaceId, setCreatedRaceId] = useState<number | null>(null);
-    const [mounted, setMounted] = useState(false);
 
     // Fetch races
     const fetchRaces = async () => {
@@ -112,7 +98,6 @@ export default function RacesPage() {
     };
 
     useEffect(() => {
-        setMounted(true);
         fetchRaces();
         const interval = setInterval(fetchRaces, 10000);
         return () => clearInterval(interval);
@@ -127,6 +112,7 @@ export default function RacesPage() {
             setPollingForRace(true);
             pollForCreatedRace();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [raceCreated]);
 
     const pollForCreatedRace = async (maxAttempts = 20) => {
@@ -136,13 +122,13 @@ export default function RacesPage() {
                 if (response.ok) {
                     const data = await response.json();
                     // Check if we have a new race that matches our transaction
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const newRace = data.activeRaces.find((r: any) =>
                         r.txHash === createRaceHash ||
                         (r.creator === address && new Date(r.createdAt).getTime() > Date.now() - 30000)
                     );
 
                     if (newRace) {
-                        setCreatedRaceId(newRace.raceId);
                         setPollingForRace(false);
                         toast({
                             title: 'RACE CREATED',
@@ -153,6 +139,7 @@ export default function RacesPage() {
                         return;
                     }
                 }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             } catch (error) {
                 console.log(`Polling attempt ${i + 1} failed`);
             }
@@ -186,6 +173,7 @@ export default function RacesPage() {
                 functionName: 'createRace',
                 args: [1, RACE_TOKEN_ADDRESS, entryFeeWei],
             });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             console.error('Create race error:', error);
             toast({
@@ -248,104 +236,17 @@ export default function RacesPage() {
             {/* Content */}
             <div className="relative z-10 container mx-auto px-4 py-8">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-12">
-                    <div>
-                        <h1 className="text-6xl font-black tracking-tighter mb-2 glitch"
-                            data-text="RAT RACES"
-                            style={{
-                                textShadow: '0 0 20px rgba(160,174,192,0.3), 0 0 40px rgba(203,213,224,0.2)',
-                                fontFamily: 'monospace',
-                                color: '#cbd5e0'
-                            }}>
-                            RAT RACES
-                        </h1>
-                        <p className="text-sm font-mono tracking-widest" style={{ color: '#718096' }}>[ UNDERGROUND CIRCUIT // RACE ENTRY ]</p>
-                    </div>
-                    <div className="flex gap-4 items-center">
-                        {!mounted ? (
-                            <div className="font-mono font-black px-8 py-4 text-lg border transition-all duration-300"
-                                style={{
-                                    backgroundColor: '#2d3748',
-                                    borderColor: '#4a5568',
-                                    color: '#718096',
-                                    opacity: 0.7,
-                                    cursor: 'not-allowed'
-                                }}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#718096' }}></div>
-                                    LOADING
-                                </div>
-                            </div>
-                        ) : !isConnected ? (
-                            <button
-                                onClick={() => {
-                                    const connector = connectors[0];
-                                    if (connector) {
-                                        connect({ connector });
-                                    }
-                                }}
-                                disabled={isPending || !connectors.length}
-                                className="relative px-8 py-4 font-mono font-black tracking-wider transition-all duration-300 overflow-hidden group bg-black hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
-                                style={{ 
-                                    color: '#a0aec0'
-                                }}
-                            >
-                                <div
-                                    className="absolute inset-0 opacity-70 group-hover:opacity-100 transition-opacity duration-300"
-                                    style={{
-                                        background: 'linear-gradient(to right, #cbd5e0, #4a5568)',
-                                        padding: '1px',
-                                        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                                        WebkitMaskComposite: 'xor',
-                                        maskComposite: 'exclude',
-                                    }}
-                                />
-                                <span className="relative z-10 group-hover:text-white transition-colors duration-300">
-                                    {isPending ? 'CONNECTING...' : 'CONNECT WALLET'}
-                                </span>
-                            </button>
-                        ) : (
-                            <div className="text-right px-4">
-                                <div className="text-xs font-mono mb-1 tracking-wider" style={{ color: '#718096' }}>CONNECTED</div>
-                                <div className="text-sm font-mono font-black tracking-wider" style={{ color: '#cbd5e0' }}>
-                                    {address?.slice(0, 6)}...{address?.slice(-4)}
-                                </div>
-                            </div>
-                        )}
-                        <Link href="/shop">
-                            <button className="relative px-8 py-4 font-mono font-black tracking-wider transition-all duration-300 overflow-hidden group hover:scale-[1.02]"
-                                style={{
-                                    background: 'linear-gradient(to bottom, rgba(45,55,72,0.3), #000000)',
-                                    color: '#cbd5e0'
-                                }}
-                            >
-                                <div
-                                    className="absolute inset-0 group-hover:opacity-100 opacity-70 transition-opacity duration-300"
-                                    style={{
-                                        background: 'linear-gradient(180deg, #e2e8f0 0%, #2d3748 100%)',
-                                        padding: '1px',
-                                        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                                        WebkitMaskComposite: 'xor',
-                                        maskComposite: 'exclude',
-                                    }}
-                                />
-                                <span className="relative z-10 group-hover:text-white transition-colors duration-300">
-                                    MINT RAT
-                                </span>
-                            </button>
-                        </Link>
-                        <Link href="/">
-                            <button className="px-8 py-4 font-mono font-black tracking-wider border transition-all duration-300 hover:border-[#718096] bg-transparent hover:scale-[1.02]"
-                                style={{
-                                    borderColor: '#4a5568',
-                                    color: '#a0aec0'
-                                }}
-                            >
-                                &lt; EXIT
-                            </button>
-                        </Link>
-                    </div>
+                <div className="mb-12">
+                    <h1 className="text-6xl font-black tracking-tighter mb-2 glitch"
+                        data-text="RAT RACES"
+                        style={{
+                            textShadow: '0 0 20px rgba(160,174,192,0.3), 0 0 40px rgba(203,213,224,0.2)',
+                            fontFamily: 'monospace',
+                            color: '#cbd5e0'
+                        }}>
+                        RAT RACES
+                    </h1>
+                    <p className="text-sm font-mono tracking-widest" style={{ color: '#718096' }}>{'[ UNDERGROUND CIRCUIT // RACE ENTRY ]'}</p>
                 </div>
 
                 {/* Active Races Section */}

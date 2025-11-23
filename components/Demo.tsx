@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
-import Navigation from "./Navigation";
 import Link from "next/link";
 
 interface RatStats {
@@ -125,9 +124,6 @@ export default function Demo() {
           backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 4px)'
         }}
       ></div>
-
-      {/* Navigation */}
-      <Navigation />
 
       <div className="relative z-10 container mx-auto px-4 py-8">
         {/* Header */}
