@@ -4,11 +4,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/components/ui/use-toast';
 import { mintRat } from '@/lib/contracts/mint-rat';
 import { getTokenByAddress } from '@/lib/tokens';
+import Navigation from '@/components/Navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { formatUnits } from 'viem';
-import { useAccount, useConnect, useReadContract } from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
 
 const RAT_RACERS = [
     {
@@ -55,7 +56,6 @@ interface MintedRat {
 
 export default function ShopPage() {
     const { address, isConnected } = useAccount();
-    const { connect, connectors, isPending } = useConnect();
     const { toast } = useToast();
     const [selectedRat, setSelectedRat] = useState<number | null>(null);
     const [minting, setMinting] = useState(false);
@@ -260,11 +260,11 @@ export default function ShopPage() {
 
             // Refetch balance one more time after everything completes
             refetchBalance();
-        } catch (error: any) {
+        } catch (error) {
             console.error('Mint error:', error);
             toast({
                 title: 'MINT FAILED',
-                description: error.message || 'Transaction rejected',
+                description: error instanceof Error ? error.message : 'Transaction rejected',
                 variant: 'destructive',
             });
         } finally {
@@ -284,7 +284,7 @@ export default function ShopPage() {
                         return;
                     }
                 }
-            } catch (error) {
+            } catch {
                 console.log(`Polling attempt ${i + 1} failed`);
             }
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -311,12 +311,14 @@ export default function ShopPage() {
                 }}
             ></div>
 
+     
+
             {/* Content */}
             <div className="relative z-10 container mx-auto px-4 py-8">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-12">
-                    <div>
-                        <h1 className="text-6xl font-black tracking-tighter mb-2 glitch"
+                <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-4">
+                    <div className="text-center md:text-left">
+                        <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-2 glitch"
                             data-text="RAT UNDERGROUND"
                             style={{
                                 textShadow: '0 0 20px rgba(160,174,192,0.3), 0 0 40px rgba(203,213,224,0.2)',
@@ -327,135 +329,61 @@ export default function ShopPage() {
                         </h1>
                         <p className="text-sm font-mono tracking-widest" style={{ color: '#718096' }}>{'[ MINTING FACILITY // SECTOR 7 ]'}</p>
                     </div>
-                    <div className="flex gap-4 items-center">
-                        {/* Get RACE Token Button */}
-                        <a
-                            href="https://app.uniswap.org/explore/tokens/base/0xea4eaca6e4197ecd092ba77b5da768f19287e06f?inputCurrency=NATIVE"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group relative transition-all duration-300 hover:scale-105"
+
+                    {/* Get RACE Token Button */}
+                    <a
+                        href="https://app.uniswap.org/explore/tokens/base/0xea4eaca6e4197ecd092ba77b5da768f19287e06f?inputCurrency=NATIVE"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group relative transition-all duration-300 hover:scale-105"
+                        style={{
+                            textDecoration: 'none',
+                            display: 'inline-block'
+                        }}
+                    >
+                        <div className="flex items-center gap-2 px-4 py-2 border relative overflow-hidden"
                             style={{
-                                textDecoration: 'none',
-                                display: 'inline-block'
-                            }}
-                        >
-                            <div className="flex items-center gap-2 px-4 py-2 border relative overflow-hidden"
-                                style={{
-                                    backgroundColor: 'rgba(45,55,72,0.5)',
-                                    borderColor: '#4a5568',
-                                    backdropFilter: 'blur(10px)'
-                                }}>
-                                {/* Glitching RACE Logo */}
-                                <div className="token-glitch-container relative">
-                                    <div className="token-icon-wrapper relative w-8 h-8 rounded-full overflow-hidden border"
-                                        style={{
-                                            borderColor: '#4a5568',
-                                            backgroundColor: '#000000'
-                                        }}>
-                                        <Image
-                                            src="/race.png"
-                                            alt="RACE"
-                                            width={32}
-                                            height={32}
-                                            className="token-glitch w-full h-full object-cover"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Text */}
-                                <div className="flex flex-col">
-                                    <span className="text-xs font-mono font-black tracking-wider group-hover:text-white transition-colors duration-300"
-                                        style={{ color: '#cbd5e0' }}>
-                                        GET RACE
-                                    </span>
-                                    <span className="text-[10px] font-mono opacity-60"
-                                        style={{ color: '#718096' }}>
-                                        UNISWAP
-                                    </span>
-                                </div>
-
-                                {/* Hover glow */}
-                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                                backgroundColor: 'rgba(45,55,72,0.5)',
+                                borderColor: '#4a5568',
+                                backdropFilter: 'blur(10px)'
+                            }}>
+                            {/* Glitching RACE Logo */}
+                            <div className="token-glitch-container relative">
+                                <div className="token-icon-wrapper relative w-8 h-8 rounded-full overflow-hidden border"
                                     style={{
-                                        background: 'radial-gradient(circle at center, rgba(203,213,224,0.1), transparent)',
-                                    }}
-                                />
+                                        borderColor: '#4a5568',
+                                        backgroundColor: '#000000'
+                                    }}>
+                                    <Image
+                                        src="/race.png"
+                                        alt="RACE"
+                                        width={32}
+                                        height={32}
+                                        className="token-glitch w-full h-full object-cover"
+                                    />
+                                </div>
                             </div>
-                        </a>
 
-                        {!mounted ? (
-                            <div className="glass-button font-mono font-black px-6 py-3 text-lg border"
-                                style={{
-                                    backgroundColor: '#2d3748',
-                                    borderColor: '#4a5568',
-                                    color: '#e2e8f0',
-                                    opacity: 0.5
-                                }}
-                            >
-                                LOADING...
-                            </div>
-                        ) : !isConnected ? (
-                            <button
-                                onClick={() => {
-                                    const connector = connectors[0];
-                                    if (connector) {
-                                        connect({ connector });
-                                    }
-                                }}
-                                disabled={isPending || !connectors.length}
-                                className="relative px-8 py-4 font-mono font-black tracking-wider transition-all duration-300 overflow-hidden group hover:scale-[1.02] disabled:opacity-50"
-                                style={{
-                                    background: 'linear-gradient(to bottom right, rgba(26,32,44,0.8), #000000)',
-                                    color: '#cbd5e0',
-                                    animation: !isPending ? 'subtle-glow 3s ease-in-out infinite' : 'none'
-                                }}
-                            >
-                                <div
-                                    className="absolute inset-0 opacity-70 group-hover:opacity-100 transition-opacity duration-300"
-                                    style={{
-                                        background: 'linear-gradient(to bottom, #cbd5e0, #4a5568)',
-                                        padding: '1px',
-                                        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                                        WebkitMaskComposite: 'xor',
-                                        maskComposite: 'exclude',
-                                    }}
-                                />
-                                <span className="relative z-10 group-hover:text-white transition-colors duration-300">
-                                    {isPending ? 'CONNECTING...' : '[!] CONNECT WALLET'}
+                            {/* Text */}
+                            <div className="flex flex-col">
+                                <span className="text-xs font-mono font-black tracking-wider group-hover:text-white transition-colors duration-300"
+                                    style={{ color: '#cbd5e0' }}>
+                                    GET RACE
                                 </span>
-                            </button>
-                        ) : (
-                            <div className="text-right">
-                                <div className="text-xs font-mono mb-1" style={{ color: '#718096' }}>CONNECTED</div>
-                                <div className="text-sm font-mono" style={{ color: '#cbd5e0' }}>
-                                    {address?.slice(0, 6)}...{address?.slice(-4)}
-                                </div>
-                            </div>
-                        )}
-                        <Link href="/">
-                            <button
-                                className="relative px-6 py-3 font-mono font-black tracking-wider transition-all duration-300 overflow-hidden group hover:scale-[1.02] bg-black"
-                                style={{
-                                    color: '#a0aec0',
-                                    animation: 'subtle-pulse 5s ease-in-out infinite'
-                                }}
-                            >
-                                <div
-                                    className="absolute inset-0"
-                                    style={{
-                                        background: 'linear-gradient(to right, #cbd5e0, #4a5568)',
-                                        padding: '1px',
-                                        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                                        WebkitMaskComposite: 'xor',
-                                        maskComposite: 'exclude',
-                                    }}
-                                />
-                                <span className="relative z-10 group-hover:text-white transition-colors duration-300">
-                                    &lt; EXIT
+                                <span className="text-[10px] font-mono opacity-60"
+                                    style={{ color: '#718096' }}>
+                                    UNISWAP
                                 </span>
-                            </button>
-                        </Link>
-                    </div>
+                            </div>
+
+                            {/* Hover glow */}
+                            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                                style={{
+                                    background: 'radial-gradient(circle at center, rgba(203,213,224,0.1), transparent)',
+                                }}
+                            />
+                        </div>
+                    </a>
                 </div>
 
                 {/* Info Panel */}
