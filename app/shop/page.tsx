@@ -70,6 +70,22 @@ export default function ShopPage() {
         setMounted(true);
     }, []);
 
+    // Format large numbers with K, M, B, T suffixes
+    const formatTokenAmount = (amount: string | number): string => {
+        const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+        if (num >= 1_000_000_000_000) {
+            return (num / 1_000_000_000_000).toFixed(2) + 'T';
+        } else if (num >= 1_000_000_000) {
+            return (num / 1_000_000_000).toFixed(2) + 'B';
+        } else if (num >= 1_000_000) {
+            return (num / 1_000_000).toFixed(2) + 'M';
+        } else if (num >= 100_000) {
+            return (num / 1_000).toFixed(0) + 'K';
+        } else {
+            return num.toFixed(0);
+        }
+    };
+
     // Contract addresses from environment variables
     const RAT_NFT_ADDRESS = process.env.NEXT_PUBLIC_RAT_NFT_ADDRESS as `0x${string}`;
 
@@ -158,7 +174,7 @@ export default function ShopPage() {
     const selectedTokenSymbol = selectedRat !== null ? tokenSymbols[selectedRat] : undefined;
 
     // Read balance of the payment token for selected rat
-    const { data: tokenBalance, refetch: refetchBalance } = useReadContract({
+    const { data: tokenBalance, refetch: refetchBalance, isLoading: isLoadingBalance } = useReadContract({
         address: paymentTokenAddress,
         abi: TOKEN_ABI,
         functionName: 'balanceOf',
@@ -172,6 +188,18 @@ export default function ShopPage() {
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    // Debug log
+    useEffect(() => {
+        if (selectedRat !== null && address && paymentTokenAddress) {
+            console.log('Balance Query:', {
+                address,
+                paymentTokenAddress,
+                tokenBalance: tokenBalance?.toString(),
+                isLoadingBalance
+            });
+        }
+    }, [selectedRat, address, paymentTokenAddress, tokenBalance, isLoadingBalance]);
 
     const handleSelectRat = (ratId: number) => {
         setSelectedRat(ratId);
@@ -206,7 +234,7 @@ export default function ShopPage() {
                 },
                 onApproving: () => {
                     const tokenName = selectedTokenSymbol || 'tokens';
-                    const amount = mintPrice ? formatUnits(mintPrice, 18) : '...';
+                    const amount = mintPrice ? formatTokenAmount(formatUnits(mintPrice, 18)) : '...';
                     toast({ title: 'APPROVAL NEEDED', description: `Approve ${amount} ${tokenName} in wallet...` });
                 },
                 onApprovalConfirmed: () => {
@@ -439,7 +467,7 @@ export default function ShopPage() {
                     <div className="flex items-center justify-between">
                         <div>
                             <div className="text-4xl font-black mb-1" style={{ color: '#e2e8f0' }}>
-                                {selectedRat !== null && mintPrice ? formatUnits(mintPrice, 18) : '...'} {selectedTokenSymbol || 'TOKENS'}
+                                {selectedRat !== null && mintPrice ? formatTokenAmount(formatUnits(mintPrice, 18)) : '...'} {selectedTokenSymbol || 'TOKENS'}
                             </div>
                             <div className="text-sm font-mono" style={{ color: '#718096' }}>
                                 {selectedRat !== null ? `${'// '}${RAT_RACERS[selectedRat].name} MINT COST` : '// SELECT A RACER'}
@@ -462,14 +490,14 @@ export default function ShopPage() {
                                 <div className="text-right">
                                     <div className="text-xs font-mono mb-1" style={{ color: '#718096' }}>YOUR BALANCE</div>
                                     <div className={`text-3xl font-black font-mono`} style={{
-                                        color: tokenBalance && mintPrice && Number(formatUnits(tokenBalance as bigint, 18)) >= Number(formatUnits(mintPrice, 18))
+                                        color: tokenBalance && mintPrice && tokenBalance >= mintPrice
                                             ? '#a0aec0'
                                             : '#5d4037'
                                     }}>
-                                        {tokenBalance ? Number(formatUnits(tokenBalance as bigint, 18)).toFixed(0) : '0'} {selectedTokenSymbol || 'TOKENS'}
+                                        {isLoadingBalance ? '...' : tokenBalance ? formatTokenAmount(formatUnits(tokenBalance as bigint, 18)) : '0'} {selectedTokenSymbol || 'TOKENS'}
                                     </div>
                                     <div className="text-xs font-mono mt-1" style={{ color: '#718096' }}>
-                                        {tokenBalance && mintPrice && Number(formatUnits(tokenBalance as bigint, 18)) < Number(formatUnits(mintPrice, 18)) && (
+                                        {tokenBalance && mintPrice && tokenBalance < mintPrice && (
                                             <span style={{ color: '#5d4037' }}>[!] INSUFFICIENT FUNDS</span>
                                         )}
                                     </div>
@@ -541,7 +569,7 @@ export default function ShopPage() {
                                                     color: '#e2e8f0',
                                                     boxShadow: '0 0 15px rgba(74,85,104,0.3)'
                                                 }}>
-                                                {price ? formatUnits(price, 18) : '...'} {tokenSymbol || 'TOKENS'}
+                                                {price ? formatTokenAmount(formatUnits(price, 18)) : '...'} {tokenSymbol || 'TOKENS'}
                                             </div>
                                         </div>
 
