@@ -12,7 +12,7 @@ const RAT_NFT_ABI = [
     {
         inputs: [
             { name: 'to', type: 'address' },
-            { name: 'imageIndex', type: 'uint8' },
+            { name: 'imageIndex', type: 'uint256' },
         ],
         name: 'mint',
         outputs: [{ name: 'tokenId', type: 'uint256' }],
@@ -20,7 +20,7 @@ const RAT_NFT_ABI = [
         type: 'function',
     },
     {
-        inputs: [{ name: 'imageIndex', type: 'uint8' }],
+        inputs: [{ name: 'imageIndex', type: 'uint256' }],
         name: 'getRatConfig',
         outputs: [
             { name: 'paymentToken', type: 'address' },
@@ -52,6 +52,13 @@ const RACE_TOKEN_ABI = [
         stateMutability: 'view',
         type: 'function',
     },
+    {
+        inputs: [{ name: 'account', type: 'address' }],
+        name: 'balanceOf',
+        outputs: [{ name: '', type: 'uint256' }],
+        stateMutability: 'view',
+        type: 'function',
+    },
 ] as const;
 
 export interface MintProgress {
@@ -67,17 +74,28 @@ export async function mintRat(
     imageIndex: number,
     progress?: MintProgress
 ): Promise<{ tokenId: bigint; txHash: string }> {
+    console.log('[MINT] Starting mint process:', {
+        userAddress,
+        imageIndex,
+        ratNFTAddress: RAT_NFT_ADDRESS
+    });
+
     // Step 1: Get payment token and price for this rat type
     progress?.onCheckingAllowance?.();
     const ratConfig = await readContract(config, {
         address: RAT_NFT_ADDRESS,
         abi: RAT_NFT_ABI,
         functionName: 'getRatConfig',
-        args: [imageIndex as any],
+        args: [BigInt(imageIndex)],
     });
 
     const paymentTokenAddress = ratConfig[0] as `0x${string}`;
     const mintPrice = ratConfig[1] as bigint;
+
+    console.log('[MINT] Rat config:', {
+        paymentTokenAddress,
+        mintPrice: mintPrice.toString()
+    });
 
     if (!paymentTokenAddress || paymentTokenAddress === '0x0000000000000000000000000000000000000000') {
         throw new Error('Payment token not configured for this rat type');
@@ -91,8 +109,29 @@ export async function mintRat(
         args: [userAddress, RAT_NFT_ADDRESS],
     });
 
+    console.log('[MINT] Current allowance:', {
+        currentAllowance: currentAllowance.toString(),
+        mintPrice: mintPrice.toString(),
+        needsApproval: currentAllowance < mintPrice
+    });
+
+    // Step 2.5: Check user has sufficient balance
+    const userBalance = await readContract(config, {
+        address: paymentTokenAddress,
+        abi: RACE_TOKEN_ABI,
+        functionName: 'balanceOf',
+        args: [userAddress],
+    });
+
+    console.log('[MINT] User balance:', userBalance.toString());
+
+    if (userBalance < mintPrice) {
+        throw new Error(`Insufficient balance. Need ${mintPrice.toString()} but have ${userBalance.toString()}`);
+    }
+
     // Step 3: Approve if needed
     if (currentAllowance < mintPrice) {
+        console.log('[MINT] Requesting approval...');
         progress?.onApproving?.();
         const approveHash = await writeContract(config, {
             address: paymentTokenAddress,
@@ -101,21 +140,56 @@ export async function mintRat(
             args: [RAT_NFT_ADDRESS, mintPrice],
         });
 
+        console.log('[MINT] Approval tx submitted:', approveHash);
+
         // Wait for approval to confirm
-        await waitForTransactionReceipt(config, {
+        const approvalReceipt = await waitForTransactionReceipt(config, {
             hash: approveHash,
+            confirmations: 2, // Wait for 2 confirmations to be safe
         });
+
+        console.log('[MINT] Approval confirmed:', {
+            status: approvalReceipt.status,
+            blockNumber: approvalReceipt.blockNumber
+        });
+
+        if (approvalReceipt.status !== 'success') {
+            throw new Error('Token approval failed');
+        }
+
+        // Verify allowance was actually updated
+        const newAllowance = await readContract(config, {
+            address: paymentTokenAddress,
+            abi: RACE_TOKEN_ABI,
+            functionName: 'allowance',
+            args: [userAddress, RAT_NFT_ADDRESS],
+        });
+
+        console.log('[MINT] Verified new allowance:', newAllowance.toString());
+
+        if (newAllowance < mintPrice) {
+            throw new Error('Approval not reflected on-chain yet, please try again');
+        }
+
+        // Small delay to ensure blockchain state is propagated
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
         progress?.onApprovalConfirmed?.();
+    } else {
+        console.log('[MINT] Approval not needed, sufficient allowance exists');
     }
 
     // Step 4: Mint the rat
+    console.log('[MINT] Starting mint transaction...');
     progress?.onMinting?.();
     const mintHash = await writeContract(config, {
         address: RAT_NFT_ADDRESS,
         abi: RAT_NFT_ABI,
         functionName: 'mint',
-        args: [userAddress, imageIndex as any],
+        args: [userAddress, BigInt(imageIndex)],
     });
+
+    console.log('[MINT] Mint tx submitted:', mintHash);
 
     // Wait for mint transaction
     const receipt = await waitForTransactionReceipt(config, {

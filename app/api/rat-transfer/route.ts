@@ -69,17 +69,18 @@ export async function POST(request: NextRequest) {
 
         logger.logWebhookPayload('Transfer', payload);
 
-        // Validate event type - return 200 if it's not the expected event
+        // Validate event type - return 200 OK if it's not the expected event (graceful skip)
         if (!payload.event_name || payload.event_name !== ContractEvent.TRANSFER) {
-            log.info('Received unexpected event type, ignoring gracefully', {
+            log.info('[SKIP] Event not for this route - returning 200 OK', {
                 received: payload.event_name,
                 expected: ContractEvent.TRANSFER,
                 txHash: payload.transaction_hash,
+                action: 'Skipped gracefully, no error'
             });
             return NextResponse.json({
                 success: true,
                 skipped: true,
-                message: `This endpoint handles ${ContractEvent.TRANSFER} events only. Received: ${payload.event_name}`,
+                message: `This endpoint handles ${ContractEvent.TRANSFER} events only. Received: ${payload.event_name}. No error - gracefully skipped.`,
             }, { status: 200 });
         }
 

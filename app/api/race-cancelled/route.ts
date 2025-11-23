@@ -60,17 +60,18 @@ export async function POST(req: NextRequest) {
 
         log.info('Received webhook payload', { payload });
 
-        // Validate event type - return 200 if it's not the expected event
+        // Validate event type - return 200 OK if it's not the expected event (graceful skip)
         if (payload.event_name !== ContractEvent.RACE_CANCELLED) {
-            log.info('Received unexpected event type, ignoring gracefully', {
+            log.info('[SKIP] Event not for this route - returning 200 OK', {
                 received: payload.event_name,
                 expected: ContractEvent.RACE_CANCELLED,
                 txHash: payload.transaction_hash,
+                action: 'Skipped gracefully, no error'
             });
             return NextResponse.json({
                 success: true,
                 skipped: true,
-                message: `This endpoint handles ${ContractEvent.RACE_CANCELLED} events only. Received: ${payload.event_name}`,
+                message: `This endpoint handles ${ContractEvent.RACE_CANCELLED} events only. Received: ${payload.event_name}. No error - gracefully skipped.`,
             }, { status: 200 });
         }
 

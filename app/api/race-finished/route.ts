@@ -62,18 +62,19 @@ export async function POST(request: NextRequest) {
 
         logger.logWebhookPayload('RaceFinished', payload);
 
-        // Validate event type - accept both RACE_FINISHED and RaceResultsRecorded
+        // Validate event type - accept both RACE_FINISHED and RaceResultsRecorded (graceful skip if not)
         const validEvents = [ContractEvent.RACE_FINISHED, 'RaceResultsRecorded'];
         if (!validEvents.includes(payload.event_name)) {
-            log.info('Received unexpected event type, ignoring gracefully', {
+            log.info('[SKIP] Event not for this route - returning 200 OK', {
                 received: payload.event_name,
                 expected: validEvents,
                 txHash: payload.transaction_hash,
+                action: 'Skipped gracefully, no error'
             });
             return NextResponse.json({
                 success: true,
                 skipped: true,
-                message: `This endpoint handles ${validEvents.join(' or ')} events only. Received: ${payload.event_name}`,
+                message: `This endpoint handles ${validEvents.join(' or ')} events only. Received: ${payload.event_name}. No error - gracefully skipped.`,
             }, { status: 200 });
         }
 

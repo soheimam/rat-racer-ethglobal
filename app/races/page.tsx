@@ -544,6 +544,8 @@ export default function RacesPage() {
                                     </div>
                                     <span className="loading-text">PROCESSING</span>
                                 </div>
+                            ) : (
+                                '[!] CREATE RACE'
                             )}
                         </button>
                     </div>
