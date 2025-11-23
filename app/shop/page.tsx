@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/components/ui/use-toast';
 import { mintRat } from '@/lib/contracts/mint-rat';
 import { getTokenByAddress } from '@/lib/tokens';
-import Navigation from '@/components/Navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -86,12 +85,13 @@ export default function ShopPage() {
         }
     };
 
-    // Contract addresses from environment variables
-    const RAT_NFT_ADDRESS = process.env.NEXT_PUBLIC_RAT_NFT_ADDRESS as `0x${string}`;
+    // Contract addresses - UPDATE YOUR .ENV FILE!
+    const RAT_NFT_ADDRESS = (process.env.NEXT_PUBLIC_RAT_NFT_ADDRESS || '0x38f66760ada4c01bc5a4a7370882f0aee7090674') as `0x${string}`;
+    const RACE_TOKEN_ADDRESS = (process.env.NEXT_PUBLIC_RACE_TOKEN_ADDRESS || '0xea4eaca6e4197ecd092ba77b5da768f19287e06f') as `0x${string}`;
 
     const RAT_CONFIG_ABI = [
         {
-            inputs: [{ name: 'imageIndex', type: 'uint8' }],
+            inputs: [{ name: 'imageIndex', type: 'uint256' }],
             name: 'getRatConfig',
             outputs: [
                 { name: 'paymentToken', type: 'address' },
@@ -124,24 +124,34 @@ export default function ShopPage() {
         address: RAT_NFT_ADDRESS,
         abi: RAT_CONFIG_ABI,
         functionName: 'getRatConfig',
-        args: [0]
+        args: [BigInt(0)]
     });
 
     const { data: rat1Config } = useReadContract({
         address: RAT_NFT_ADDRESS,
         abi: RAT_CONFIG_ABI,
         functionName: 'getRatConfig',
-        args: [1]
+        args: [BigInt(1)]
     });
 
     const { data: rat2Config } = useReadContract({
         address: RAT_NFT_ADDRESS,
         abi: RAT_CONFIG_ABI,
         functionName: 'getRatConfig',
-        args: [2]
+        args: [BigInt(2)]
     });
 
     const ratConfigs = [rat0Config, rat1Config, rat2Config];
+
+    // Debug logging
+    useEffect(() => {
+        console.log('Rat Configs:', {
+            rat0: rat0Config,
+            rat1: rat1Config,
+            rat2: rat2Config,
+            ratNFTAddress: RAT_NFT_ADDRESS
+        });
+    }, [rat0Config, rat1Config, rat2Config, RAT_NFT_ADDRESS]);
 
     // Get token symbols for all payment tokens
     const { data: token0Symbol } = useReadContract({
@@ -167,11 +177,32 @@ export default function ShopPage() {
 
     const tokenSymbols = [token0Symbol, token1Symbol, token2Symbol];
 
+    // Debug token symbols
+    useEffect(() => {
+        console.log('Token Symbols:', {
+            token0Symbol,
+            token1Symbol,
+            token2Symbol
+        });
+    }, [token0Symbol, token1Symbol, token2Symbol]);
+
     // Get selected rat data
     const selectedRatConfig = selectedRat !== null ? ratConfigs[selectedRat] : undefined;
     const paymentTokenAddress = selectedRatConfig?.[0] as `0x${string}` | undefined;
     const mintPrice = selectedRatConfig?.[1] as bigint | undefined;
     const selectedTokenSymbol = selectedRat !== null ? tokenSymbols[selectedRat] : undefined;
+
+    // Always read RACE token balance
+    const { data: raceBalance } = useReadContract({
+        address: RACE_TOKEN_ADDRESS,
+        abi: TOKEN_ABI,
+        functionName: 'balanceOf',
+        args: address ? [address] : undefined,
+        query: {
+            enabled: !!address,
+            refetchInterval: false,
+        }
+    });
 
     // Read balance of the payment token for selected rat
     const { data: tokenBalance, refetch: refetchBalance, isLoading: isLoadingBalance } = useReadContract({
@@ -329,38 +360,65 @@ export default function ShopPage() {
                         </h1>
                         <p className="text-sm font-mono tracking-widest" style={{ color: '#718096' }}>{'[ MINTING FACILITY // SECTOR 7 ]'}</p>
                     </div>
+                    <div className="flex gap-4 items-center">
+                        {/* RACE Balance Display */}
+                        {mounted && isConnected && (
+                            <div className="px-4 py-2 border flex items-center gap-3"
+                                style={{
+                                    backgroundColor: 'rgba(26,32,44,0.8)',
+                                    borderColor: '#4a5568',
+                                    backdropFilter: 'blur(10px)'
+                                }}>
+                                <Image
+                                    src="/race.png"
+                                    alt="RACE"
+                                    width={24}
+                                    height={24}
+                                    className="w-6 h-6 rounded-full"
+                                />
+                                <div className="text-right">
+                                    <div className="text-[10px] font-mono tracking-wider" style={{ color: '#718096' }}>
+                                        RACE BALANCE
+                                    </div>
+                                    <div className="text-sm font-mono font-black" style={{ color: '#cbd5e0' }}>
+                                        {raceBalance ? formatTokenAmount(formatUnits(raceBalance as bigint, 18)) : '0'}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
-                    {/* Get RACE Token Button */}
-                    <a
-                        href="https://app.uniswap.org/explore/tokens/base/0xea4eaca6e4197ecd092ba77b5da768f19287e06f?inputCurrency=NATIVE"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group relative transition-all duration-300 hover:scale-105"
-                        style={{
-                            textDecoration: 'none',
-                            display: 'inline-block'
-                        }}
-                    >
-                        <div className="flex items-center gap-2 px-4 py-2 border relative overflow-hidden"
+                        {/* Get RACE Token Button */}
+                        <a
+                            href="https://app.uniswap.org/explore/tokens/base/0xea4eaca6e4197ecd092ba77b5da768f19287e06f?inputCurrency=NATIVE"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group relative transition-all duration-300 hover:scale-105"
                             style={{
-                                backgroundColor: 'rgba(45,55,72,0.5)',
-                                borderColor: '#4a5568',
-                                backdropFilter: 'blur(10px)'
-                            }}>
-                            {/* Glitching RACE Logo */}
-                            <div className="token-glitch-container relative">
-                                <div className="token-icon-wrapper relative w-8 h-8 rounded-full overflow-hidden border"
-                                    style={{
-                                        borderColor: '#4a5568',
-                                        backgroundColor: '#000000'
-                                    }}>
-                                    <Image
-                                        src="/race.png"
-                                        alt="RACE"
-                                        width={32}
-                                        height={32}
-                                        className="token-glitch w-full h-full object-cover"
-                                    />
+                                textDecoration: 'none',
+                                display: 'inline-block'
+                            }}
+                        >
+                            <div className="flex items-center gap-2 px-4 py-2 border relative overflow-hidden"
+                                style={{
+                                    backgroundColor: 'rgba(45,55,72,0.5)',
+                                    borderColor: '#4a5568',
+                                    backdropFilter: 'blur(10px)'
+                                }}>
+                                {/* Glitching RACE Logo */}
+                                <div className="token-glitch-container relative">
+                                    <div className="token-icon-wrapper relative w-8 h-8 rounded-full overflow-hidden border"
+                                        style={{
+                                            borderColor: '#4a5568',
+                                            backgroundColor: '#000000'
+                                        }}>
+                                        <Image
+                                            src="/race.png"
+                                            alt="RACE"
+                                            width={32}
+                                            height={32}
+                                            className="token-glitch w-full h-full object-cover"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -376,14 +434,8 @@ export default function ShopPage() {
                                 </span>
                             </div>
 
-                            {/* Hover glow */}
-                            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                                style={{
-                                    background: 'radial-gradient(circle at center, rgba(203,213,224,0.1), transparent)',
-                                }}
-                            />
-                        </div>
                     </a>
+                    </div>
                 </div>
 
                 {/* Info Panel */}
@@ -550,9 +602,11 @@ export default function ShopPage() {
                                                 );
                                             })()}
 
-                                            <img
+                                            <Image
                                                 src={rat.image}
                                                 alt={rat.name}
+                                                width={320}
+                                                height={320}
                                                 className={`w-4/5 h-4/5 object-contain transition-transform duration-300 ${isHovered ? 'scale-110' : 'scale-100'
                                                     }`}
                                                 style={{
@@ -684,9 +738,11 @@ export default function ShopPage() {
                                     background: 'linear-gradient(to bottom right, #1a202c, #000000)',
                                     borderColor: '#4a5568'
                                 }}>
-                                    <img
+                                    <Image
                                         src={mintedRat.imageUrl}
                                         alt={mintedRat.name}
+                                        width={256}
+                                        height={256}
                                         className="w-full h-full object-contain"
                                         style={{ filter: 'drop-shadow(0 0 20px rgba(160,174,192,0.3))' }}
                                     />
@@ -809,6 +865,7 @@ export default function ShopPage() {
                             </Link>
                         </div>
                     )}
+                    
                 </DialogContent>
             </Dialog>
 

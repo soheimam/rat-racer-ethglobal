@@ -5,12 +5,8 @@
 import { config } from '@/components/providers/WagmiProvider';
 import { readContract, waitForTransactionReceipt, writeContract } from '@wagmi/core';
 
-// Contract address from environment variable (NO HARDCODED FALLBACKS)
-const RAT_NFT_ADDRESS = process.env.NEXT_PUBLIC_RAT_NFT_ADDRESS as `0x${string}`;
-
-if (!RAT_NFT_ADDRESS) {
-    throw new Error('Contract address must be set in environment variable: NEXT_PUBLIC_RAT_NFT_ADDRESS');
-}
+// Contract address - Deployed RatNFT on Base
+const RAT_NFT_ADDRESS = (process.env.NEXT_PUBLIC_RAT_NFT_ADDRESS || '0x38f66760ada4c01bc5a4a7370882f0aee7090674') as `0x${string}`;
 
 const RAT_NFT_ABI = [
     {
@@ -71,10 +67,6 @@ export async function mintRat(
     imageIndex: number,
     progress?: MintProgress
 ): Promise<{ tokenId: bigint; txHash: string }> {
-    if (!RAT_NFT_ADDRESS) {
-        throw new Error('Contract address must be set in environment variable: NEXT_PUBLIC_RAT_NFT_ADDRESS');
-    }
-
     // Step 1: Get payment token and price for this rat type
     progress?.onCheckingAllowance?.();
     const ratConfig = await readContract(config, {

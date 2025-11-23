@@ -456,7 +456,7 @@ export default function RacesPage() {
                                     </button>
                                 ))}
                             </div>
-                            <p className="text-xs font-mono mt-2" style={{ color: '#718096' }}>// SELECT TOKEN FOR RACE ENTRY FEE</p>
+                            <p className="text-xs font-mono mt-2" style={{ color: '#718096' }}> SELECT TOKEN FOR RACE ENTRY FEE</p>
                         </div>
 
                         {/* Entry Fee Input */}
