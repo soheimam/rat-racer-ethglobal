@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import Link from "next/link";
+import StyleSheet from "@/app/api/Stylesheet";
 
 interface RatStats {
   speed: number;
@@ -110,12 +111,14 @@ export default function Demo() {
   }, []);
 
   return (
+    
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-black text-white relative overflow-hidden">
       {/* Animated Background */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-gray-700 rounded-full filter blur-[128px] animate-pulse"></div>
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-gray-600 rounded-full filter blur-[128px] animate-pulse delay-1000"></div>
       </div>
+      <StyleSheet />
 
       {/* Scanlines Effect */}
       <div
